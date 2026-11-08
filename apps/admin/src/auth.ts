@@ -25,8 +25,8 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 export async function passwordMatches(candidate: string): Promise<boolean> {
-  // Compare digests so the comparison time doesn't depend on the password length.
-  return constantTimeEqual(await hmac(`pw:${candidate}`), await hmac(`pw:${env.ADMIN_PASSWORD}`));
+  if (!candidate) return false;
+  return Bun.password.verify(candidate, env.ADMIN_PASSWORD_HASH).catch(() => false);
 }
 
 export async function startSession(c: Context) {

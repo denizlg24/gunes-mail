@@ -95,8 +95,8 @@ Every failed request, sync run or scheduled send gets a reference such as `GM-7K
 
 `apps/admin` reads those tables, read-only, and serves a dashboard at `gunes-mail-admin.denizlg24.com`: service health, request volume and latency, errors by kind, top routes, a reference lookup with the full stack, per-mailbox sync progress and a live log tail. It is a separate Forge target (`apps/admin/Dockerfile`, health path `/health`) bound to the same Postgres resource, with:
 
-- `ADMIN_PASSWORD`: at least 16 characters; sessions last 12 hours and logins are limited to 5 attempts per 15 minutes per address.
-- `ADMIN_SESSION_SECRET` (optional): signs session cookies; defaults to a value derived from the password.
+- `ADMIN_PASSWORD_HASH`: an Argon2id hash of the password, from `bun -e 'console.log(await Bun.password.hash(process.argv[1]))' "<password>"`. Locally, a plain `ADMIN_PASSWORD` works instead. Sessions last 12 hours and logins are limited to 5 attempts per 15 minutes per address.
+- `ADMIN_SESSION_SECRET` (optional): signs session cookies. Without it a random secret is generated at start, so a redeploy signs you out.
 
 ## Releases
 
