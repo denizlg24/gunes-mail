@@ -23,7 +23,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -102,7 +102,7 @@ jobs:
       GUNES_MAIL_API_URL: ${{ vars.GUNES_MAIL_API_URL || 'https://gunes-mail-api.denizlg24.com' }}
       NEXT_TELEMETRY_DISABLED: 1
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
