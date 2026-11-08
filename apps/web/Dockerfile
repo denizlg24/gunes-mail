@@ -9,7 +9,6 @@ COPY packages/shared/package.json packages/shared/
 RUN bun install --frozen-lockfile --filter @gunes/web --ignore-scripts
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
-COPY apps/desktop/src-tauri/tauri.conf.json ./apps/desktop/src-tauri/
 ARG NEXT_PUBLIC_SITE_URL=https://gunes-mail.denizlg24.com
 ARG NEXT_PUBLIC_API_URL=https://gunes-mail-api.denizlg24.com
 ARG NEXT_PUBLIC_CONTACT_EMAIL=geral@oceaninformatix.com

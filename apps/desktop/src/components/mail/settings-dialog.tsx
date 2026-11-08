@@ -1,4 +1,4 @@
-import { CheckIcon, FilterIcon, KeyboardIcon, SendIcon, UserRoundIcon, MonitorIcon, MoonIcon, PaletteIcon, PlusIcon, SunIcon, UserMinusIcon, UsersIcon } from "lucide-react";
+import { CheckIcon, FilterIcon, InfoIcon, KeyboardIcon, SendIcon, UserRoundIcon, MonitorIcon, MoonIcon, PaletteIcon, PlusIcon, SunIcon, UserMinusIcon, UsersIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { create } from "zustand";
 
@@ -11,13 +11,14 @@ import { cn } from "@/lib/utils";
 import { ACCENTS, type Density, type ReadingPane, useUi } from "@/store/ui";
 
 import { confirmDialog } from "./dialog-host";
+import { AboutSection } from "./about-section";
 import { AccountSection } from "./account-section";
 import { useAddAccountDialog } from "./add-account-dialog";
 import { PersonAvatar } from "./person-avatar";
 import { RulesSection } from "./rules-section";
 import { SendingSection } from "./sending-section";
 
-export type Section = "account" | "accounts" | "appearance" | "rules" | "sending" | "shortcuts";
+export type Section = "account" | "accounts" | "appearance" | "rules" | "sending" | "shortcuts" | "about";
 
 export const useSettings = create<{ open: boolean; section: Section; show: (section?: Section) => void; close: () => void }>()(
   (set) => ({
@@ -171,6 +172,7 @@ export function SettingsDialog() {
     { id: "rules", label: "Rules", icon: FilterIcon },
     { id: "sending", label: "Sending", icon: SendIcon },
     { id: "shortcuts", label: "Keyboard shortcuts", icon: KeyboardIcon },
+    { id: "about", label: "About & updates", icon: InfoIcon },
   ];
 
   return (
@@ -237,6 +239,7 @@ export function SettingsDialog() {
             </div>
           )}
           {section === "account" && <AccountSection />}
+          {section === "about" && <AboutSection />}
           {section === "appearance" && <AppearanceSection />}
           {section === "rules" && <RulesSection />}
           {section === "sending" && <SendingSection onEdit={() => onOpenChange(false)} />}

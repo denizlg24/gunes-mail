@@ -90,11 +90,16 @@ Clear any build or start command overrides on both targets. Migrations run autom
 
 ## Releases
 
-Push a tag `vX.Y.Z` (matching `apps/desktop/src-tauri/tauri.conf.json` `version`). The `Release desktop app` workflow builds signed macOS (Apple silicon and Intel), Windows and Linux bundles into a draft GitHub release, including the `latest.json` the in-app updater reads. Repository secrets:
+Bump `version` in `apps/desktop/src-tauri/tauri.conf.json` (and `apps/desktop/package.json`, `Cargo.toml`) and push to `main`. The `Release desktop app` workflow tags `vX.Y.Z`, builds macOS (Apple silicon and Intel), Windows and Linux bundles, signs and notarizes the macOS apps, and publishes the release with the `latest.json` the in-app updater reads. Installed copies pick the update up within a few hours, or immediately from Settings → About & updates. The website's download buttons read the latest published release from `GET /v1/releases/latest`, so they never point at a build that is still in progress.
 
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`
-- `TAURI_SIGNING_PRIVATE_KEY` (updater signature, from `bunx tauri signer generate`)
-- Optional macOS signing and notarization: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
+Repository secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+
+Secrets in the `desktop-release` environment, for Developer ID signing and notarization:
+
+- `APPLE_DEVELOPER_ID_P12` (base64), `APPLE_DEVELOPER_ID_P12_PASSWORD`, `APPLE_DEVELOPER_ID_IDENTITY`
+- `APPLE_ASC_KEY_ID`, `APPLE_ASC_ISSUER_ID`, `APPLE_ASC_PRIVATE_KEY` (App Store Connect API key used by `notarytool`)
+
+Without them the macOS build is signed ad hoc, which macOS reports as "damaged" after download.
 
 ## License
 

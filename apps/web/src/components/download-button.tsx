@@ -4,16 +4,38 @@ import { ArrowDownIcon, ArrowRightIcon, ChevronDownIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { siApple, siLinux } from "simple-icons";
 
-import { BUILDS, type Detected, detectBuild, type Os, OS_NAMES } from "@/lib/downloads";
+import { type Build, buildsFor, detectBuild, fetchLatestRelease, type Os, OS_NAMES, type Release } from "@/lib/downloads";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-function useDetectedBuild() {
-  const [detected, setDetected] = useState<Detected | null>(null);
+interface Detected {
+  os: Os;
+  build: Build;
+}
+
+interface Downloads {
+  release: Release | null;
+  builds: Build[];
+  detected: Detected | null;
+}
+
+let pending: Promise<[Release | null, Awaited<ReturnType<typeof detectBuild>>]> | null = null;
+
+/** Fetches the latest release once per page, however many download buttons render. */
+function useDownloads(): Downloads {
+  const [state, setState] = useState<Downloads>({ release: null, builds: buildsFor(null), detected: null });
   useEffect(() => {
-    void detectBuild().then(setDetected);
+    pending ??= Promise.all([fetchLatestRelease(), detectBuild()]);
+    void pending.then(([release, platform]) => {
+      const builds = buildsFor(release);
+      const detected = platform && {
+        os: platform.os,
+        build: builds.filter((b) => b.os === platform.os)[platform.variant],
+      };
+      setState({ release, builds, detected });
+    });
   }, []);
-  return detected;
+  return state;
 }
 
 function WindowsMark({ className }: { className?: string }) {
@@ -38,7 +60,7 @@ const ORDER: Os[] = ["mac", "windows", "linux"];
 
 type Side = "top" | "bottom";
 
-function AllBuildsMenu({ current, align, side }: { current: Detected | null; align: "center" | "end"; side: Side }) {
+function AllBuildsMenu({ builds, current, align, side }: { builds: Build[]; current: Detected | null; align: "center" | "end"; side: Side }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -84,7 +106,7 @@ function AllBuildsMenu({ current, align, side }: { current: Detected | null; ali
               <OsIcon os={os} className="size-3.5" />
               {OS_NAMES[os]}
             </div>
-            {BUILDS.filter((b) => b.os === os).map((b) => (
+            {builds.filter((b) => b.os === os).map((b) => (
               <a
                 key={b.href}
                 href={b.href}
@@ -118,7 +140,7 @@ function AllBuildsMenu({ current, align, side }: { current: Detected | null; ali
 }
 
 export function DownloadButtons({ align = "center", side = "bottom" }: { align?: "center" | "end"; side?: Side }) {
-  const detected = useDetectedBuild();
+  const { builds, detected } = useDownloads();
   return (
     <div className={cn("flex flex-wrap items-center gap-3", align === "center" ? "justify-center" : "justify-end")}>
       <a
@@ -131,13 +153,13 @@ export function DownloadButtons({ align = "center", side = "bottom" }: { align?:
           <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
         </span>
       </a>
-      <AllBuildsMenu current={detected} align={align} side={side} />
+      <AllBuildsMenu builds={builds} current={detected} align={align} side={side} />
     </div>
   );
 }
 
 export function DownloadLink({ className, children }: { className?: string; children: React.ReactNode }) {
-  const detected = useDetectedBuild();
+  const { detected } = useDownloads();
   return (
     <a href={detected?.build.href ?? site.releases} className={className}>
       {children}
@@ -146,10 +168,10 @@ export function DownloadLink({ className, children }: { className?: string; chil
 }
 
 export function DownloadCaption() {
-  const detected = useDetectedBuild();
+  const { release, detected } = useDownloads();
   return (
-    <p className={cn("mt-4 text-[12px] text-white/35 transition-opacity", detected ? "opacity-100" : "opacity-0")}>
-      Version {process.env.NEXT_PUBLIC_APP_VERSION}
+    <p className={cn("mt-4 text-[12px] text-white/35 transition-opacity", release ? "opacity-100" : "opacity-0")}>
+      Version {release?.version ?? "\u00a0"}
       {detected && ` · ${detected.build.label} ${detected.build.format}`}
     </p>
   );

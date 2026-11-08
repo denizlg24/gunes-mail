@@ -12,6 +12,7 @@ import { account, publicAccount } from "./routes/account";
 import { connect } from "./routes/connect";
 import { extras } from "./routes/extras";
 import { mail } from "./routes/mail";
+import { releases } from "./routes/releases";
 
 export const app = new Hono<AppEnv>();
 
@@ -28,7 +29,8 @@ app.get("/health", (c) => c.json({ ok: true }));
 app.route("/v1/connect", connect);
 app.route("/v1/auth", publicAccount);
 app.route("/v1/me", account);
-const PUBLIC_PREFIXES = ["/v1/connect", "/v1/auth", "/v1/me"];
+app.route("/v1/releases", releases);
+const PUBLIC_PREFIXES = ["/v1/connect", "/v1/auth", "/v1/me", "/v1/releases"];
 app.use("/v1/*", async (c, next) =>
   PUBLIC_PREFIXES.some((p) => c.req.path.startsWith(p)) ? next() : requireUser(c, next),
 );
