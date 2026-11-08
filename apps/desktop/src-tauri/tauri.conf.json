@@ -50,9 +50,9 @@
     "createUpdaterArtifacts": true,
     "category": "Productivity",
     "shortDescription": "All your inboxes in one desktop app",
-    "publisher": "Güneş Mail",
+    "publisher": "Gunes Mail",
     "homepage": "https://gunes-mail.denizlg24.com",
-    "copyright": "Copyright © 2026 Güneş Mail contributors"
+    "copyright": "Copyright (c) 2026 Gunes Mail contributors"
   },
   "plugins": {
     "updater": {
