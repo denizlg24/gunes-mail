@@ -197,6 +197,29 @@ jobs:
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=4 "$app"
 
+      # Tauri notarizes the .app but only signs the .dmg around it; notarize and staple
+      # the disk image too so opening the download raises no Gatekeeper prompt.
+      - name: Notarize and staple the disk image
+        if: steps.macos-signing.outputs.signed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          dmg="$(find apps/desktop/src-tauri/target -maxdepth 6 -type f -path '*/release/bundle/dmg/*.dmg' | head -n 1)"
+          if [[ -z "$dmg" ]]; then
+            echo "No disk image was built." >&2
+            exit 1
+          fi
+          xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait
+          xcrun stapler staple "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
+          upload_dir="$RUNNER_TEMP/dmg"
+          mkdir -p "$upload_dir"
+          cp "$dmg" "$upload_dir/$(basename "$dmg" | tr ' ' '.')"
+          gh release upload "$TAG" --clobber "$upload_dir"/*.dmg
+
       - name: Remove signing material
         if: always() && runner.os == 'macOS'
         shell: bash
