@@ -9,7 +9,7 @@ import { publish } from "../lib/events";
 import { mapLimit } from "../lib/http";
 import { buildRawMessage, snippetFrom } from "../lib/mime";
 import type { MessageRef, OutgoingPayload } from "../providers/types";
-import { syncAccount } from "../sync/engine";
+import { countMessages, progressFrom, reflectWrite, syncAccount } from "../sync/engine";
 import { forgetProvider, providerFor } from "../sync/providers";
 import { applyIncomingRules, applyOutgoingRules } from "../sync/rules";
 import { applyLocally, messageRefs, recomputeThreads } from "../sync/store";
@@ -164,8 +164,14 @@ export const mail = new Hono<AppEnv>()
       .from(accounts)
       .where(eq(accounts.userId, c.get("userId")))
       .orderBy(asc(accounts.position), asc(accounts.createdAt));
+    const progress = await Promise.all(
+      rows.map(async (a) => {
+        const state = a.syncState as Parameters<typeof progressFrom>[0];
+        return state.pending ? progressFrom(state, await countMessages(a.id)) : null;
+      }),
+    );
     return c.json(
-      rows.map((a) => ({
+      rows.map((a, i) => ({
         id: a.id,
         provider: a.provider,
         email: a.email,
@@ -174,6 +180,7 @@ export const mail = new Hono<AppEnv>()
         status: a.status,
         lastError: a.lastError,
         lastSyncedAt: a.lastSyncedAt?.getTime() ?? null,
+        progress: progress[i],
       })),
     );
   })
@@ -278,7 +285,7 @@ export const mail = new Hono<AppEnv>()
     }
     if (cursor) {
       const after = decodeCursor(cursor);
-      where.push(sql`(${threads.lastDate}, ${threads.id}) < (${after.date}, ${after.id})`);
+      where.push(sql`(${threads.lastDate}, ${threads.id}) < (${after.date.toISOString()}::timestamptz, ${after.id})`);
     }
     const rows = await db
       .select()
@@ -450,14 +457,13 @@ export const mail = new Hono<AppEnv>()
   .post("/accounts/:id/drafts", async (c) => {
     const account = await ownedAccount(c.get("userId"), c.req.param("id"));
     const payload = outgoing.parse(await c.req.json());
-    const draftId = await providerFor(account).saveDraft(await buildRawMessage(payload), payload);
-    void syncAccount(account.id);
+    const { draftId, ...outcome } = await providerFor(account).saveDraft(await buildRawMessage(payload), payload);
+    await reflectWrite(account, outcome);
     return c.json({ draftId });
   })
   .delete("/accounts/:id/drafts/:draftId", async (c) => {
     const account = await ownedAccount(c.get("userId"), c.req.param("id"));
-    await providerFor(account).deleteDraft(c.req.param("draftId"));
-    void syncAccount(account.id);
+    await reflectWrite(account, await providerFor(account).deleteDraft(c.req.param("draftId")));
     return c.body(null, 204);
   })
   .post("/accounts/:id/send", async (c) => {

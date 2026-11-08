@@ -66,6 +66,18 @@ export interface MessageRef {
   providerRef?: Record<string, unknown> | null;
 }
 
+/** Optional keys a provider's sync state can carry so the engine can report download progress. */
+export type SyncProgressHint = {
+  total?: number;
+  phase?: "recent" | "older";
+};
+
+/** Message ids a write created or removed, so the local store can match the provider at once. */
+export interface WriteOutcome {
+  stored?: string[];
+  removed?: string[];
+}
+
 export interface SyncSink {
   upsertMessages(messages: NormalizedMessage[]): Promise<void>;
   /** Patch only label state (cheap incremental updates). */
@@ -98,10 +110,12 @@ export interface MailProvider {
   trash(messages: MessageRef[]): Promise<void>;
   untrash(messages: MessageRef[]): Promise<void>;
   deleteForever(messages: MessageRef[]): Promise<void>;
-  /** `raw` is the RFC 822 message. Returns the provider id of the sent message when known. */
-  send(raw: Buffer, payload: OutgoingPayload): Promise<void>;
-  saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<string>;
-  deleteDraft(draftId: string): Promise<void>;
+  /** `raw` is the RFC 822 message. */
+  send(raw: Buffer, payload: OutgoingPayload): Promise<WriteOutcome | void>;
+  saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<{ draftId: string } & WriteOutcome>;
+  deleteDraft(draftId: string): Promise<WriteOutcome | void>;
+  /** Reads specific messages so a write can be reflected without waiting for the next sync. */
+  fetchMessages?(ids: string[]): Promise<NormalizedMessage[]>;
   /** Maps a synced draft message to the id saveDraft/deleteDraft expect, when they differ. */
   resolveDraftId?(message: MessageRef): Promise<string | undefined>;
   createLabel(name: string): Promise<NormalizedLabel>;

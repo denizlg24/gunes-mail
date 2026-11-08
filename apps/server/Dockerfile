@@ -5,6 +5,7 @@ COPY package.json bun.lock ./
 COPY apps/desktop/package.json apps/desktop/
 COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
+COPY apps/admin/package.json apps/admin/
 COPY packages/shared/package.json packages/shared/
 RUN bun install --frozen-lockfile --production --filter @gunes/server --ignore-scripts
 

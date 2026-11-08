@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { ProviderError, chunk, mapLimit } from "../lib/http";
+import { QuotaBucket } from "../lib/quota";
 import { base64UrlDecode, decodeEncodedWords, parseMailboxes } from "../lib/mime";
 import { OAuthToken, type OAuthCredentials } from "./oauth-token";
 import type {
@@ -11,7 +12,9 @@ import type {
   NormalizedLabel,
   NormalizedMessage,
   OutgoingPayload,
+  SyncProgressHint,
   SyncSink,
+  WriteOutcome,
 } from "./types";
 
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
@@ -34,6 +37,27 @@ const FOLDER_LABELS = ["INBOX", "SENT", "DRAFT", "SPAM", "TRASH", "CHAT"];
 const OTHER_CATEGORIES = ["CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
 /** Messages fetched per sync cycle while backfilling older mail, to stay well under quota. */
 const BACKFILL_PAGE = 200;
+
+/**
+ * Gmail allows 15,000 quota units per user per minute. Background sync is held to half of
+ * that so opening, sending and moving mail always have room.
+ */
+const BACKGROUND_UNITS_PER_SECOND = 125;
+const BACKGROUND_BURST = 500;
+
+/** https://developers.google.com/workspace/gmail/api/reference/quota */
+function quotaCost(path: string, method: string): number {
+  if (path === "messages/send") return 100;
+  if (path === "messages/batchModify" || path === "messages/batchDelete") return 50;
+  if (path === "profile" || (path.startsWith("labels") && method === "GET")) return 1;
+  if (path === "history") return 2;
+  if (path.startsWith("drafts")) return method === "PUT" ? 15 : method === "GET" ? 5 : 10;
+  return 5;
+}
+
+function isQuotaError(e: ProviderError) {
+  return e.status === 403 && /rate ?limit|quota/i.test(e.message);
+}
 /** Messages per initial-sync run: ~2,500 quota units, well under Gmail's 15,000/min per user. */
 const INITIAL_PAGE = 500;
 
@@ -73,7 +97,7 @@ type GmailState = {
   backfillDone?: boolean;
   /** Set when the run stopped early to stay within quota; the engine re-runs soon. */
   pending?: boolean;
-};
+} & SyncProgressHint;
 
 function header(headers: Header[] | undefined, name: string): string {
   const lower = name.toLowerCase();
@@ -173,6 +197,7 @@ function toGmailLabels(add: string[], remove: string[]) {
 export class GmailProvider implements MailProvider {
   readonly kind = "gmail" as const;
   private readonly token: OAuthToken;
+  private readonly quota = new QuotaBucket(BACKGROUND_BURST, BACKGROUND_UNITS_PER_SECOND);
 
   constructor(credentials: OAuthCredentials, onRotate: (c: OAuthCredentials) => Promise<void>) {
     this.token = new OAuthToken(
@@ -186,12 +211,18 @@ export class GmailProvider implements MailProvider {
     );
   }
 
-  private api<T>(path: string, init?: RequestInit, query?: Record<string, string | string[]>): Promise<T> {
+  private async api<T>(path: string, init?: RequestInit, query?: Record<string, string | string[]>): Promise<T> {
     const url = new URL(`${API}/${path}`);
     for (const [k, v] of Object.entries(query ?? {})) {
       for (const value of Array.isArray(v) ? v : [v]) url.searchParams.append(k, value);
     }
-    return this.token.request<T>(url.toString(), init);
+    await this.quota.take(quotaCost(path, init?.method ?? "GET"));
+    try {
+      return await this.token.request<T>(url.toString(), init);
+    } catch (e) {
+      if (e instanceof ProviderError && (e.status === 429 || isQuotaError(e))) this.quota.drain(60);
+      throw e;
+    }
   }
 
   private getMetadata(ids: string[]): Promise<GmailMessage[]> {
@@ -233,14 +264,14 @@ export class GmailProvider implements MailProvider {
   async sync(raw: Record<string, unknown>, sink: SyncSink): Promise<Record<string, unknown>> {
     const state = raw as GmailState;
     await this.syncLabels(sink);
+    const downloading = !state.historyId || !state.backfillDone;
+    const profile = downloading ? await this.api<{ historyId: string; messagesTotal: number }>("profile") : null;
+    const total = profile?.messagesTotal;
 
     if (!state.historyId) {
       // Recent mail first, in quota-sized runs; history is replayed from the
       // snapshot taken before the first page, so nothing in between is lost.
-      const initial = state.initial ?? {
-        historyId: (await this.api<{ historyId: string }>("profile")).historyId,
-        pageToken: null,
-      };
+      const initial = state.initial ?? { historyId: profile?.historyId ?? "", pageToken: null };
       const page = await this.listIds(
         `newer_than:${env.INITIAL_SYNC_DAYS}d`,
         initial.pageToken ?? undefined,
@@ -251,9 +282,16 @@ export class GmailProvider implements MailProvider {
         await sink.upsertMessages((await this.getMetadata(batch)).map((m) => normalize(m)));
       }
       if (page.nextPageToken) {
-        return { initial: { ...initial, pageToken: page.nextPageToken }, pending: true } satisfies GmailState;
+        return { initial: { ...initial, pageToken: page.nextPageToken }, pending: true, total, phase: "recent" } satisfies GmailState;
       }
-      return { historyId: initial.historyId, backfillPageToken: null, backfillDone: false, pending: true } satisfies GmailState;
+      return {
+        historyId: initial.historyId,
+        backfillPageToken: null,
+        backfillDone: false,
+        pending: true,
+        total,
+        phase: "older",
+      } satisfies GmailState;
     }
 
     let historyId = state.historyId;
@@ -301,7 +339,7 @@ export class GmailProvider implements MailProvider {
       throw e;
     }
 
-    const next: GmailState = { ...state, historyId, pending: false };
+    const next: GmailState = { ...state, historyId, pending: false, total: undefined, phase: undefined };
     if (!state.backfillDone) {
       const page = await this.listIds(
         `older_than:${env.INITIAL_SYNC_DAYS}d`,
@@ -315,6 +353,10 @@ export class GmailProvider implements MailProvider {
       next.backfillPageToken = page.nextPageToken ?? null;
       next.backfillDone = !page.nextPageToken;
       next.pending = !next.backfillDone;
+      if (next.pending) {
+        next.total = total;
+        next.phase = "older";
+      }
     }
     return next;
   }
@@ -367,24 +409,47 @@ export class GmailProvider implements MailProvider {
     }
   }
 
-  async send(raw: Buffer, payload: OutgoingPayload) {
-    await this.api("messages/send", {
+  async send(raw: Buffer, payload: OutgoingPayload): Promise<WriteOutcome> {
+    const sent = await this.api<{ id: string }>("messages/send", {
       method: "POST",
       body: JSON.stringify({ raw: raw.toString("base64url"), threadId: payload.threadId }),
     });
-    if (payload.draftId) await this.deleteDraft(payload.draftId).catch(() => undefined);
+    const removed = payload.draftId ? await this.deleteDraft(payload.draftId).catch(() => ({ removed: [] })) : { removed: [] };
+    return { stored: [sent.id], removed: removed.removed };
   }
 
-  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<string> {
+  private async draftMessageId(draftId: string): Promise<string | undefined> {
+    try {
+      const draft = await this.api<{ message?: { id: string } }>(`drafts/${draftId}`, undefined, { format: "minimal" });
+      return draft.message?.id;
+    } catch (e) {
+      if (e instanceof ProviderError && e.status === 404) return undefined;
+      throw e;
+    }
+  }
+
+  /** Updating a Gmail draft replaces its message, so the old message id has to be dropped locally. */
+  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<{ draftId: string } & WriteOutcome> {
     const body = JSON.stringify({ message: { raw: raw.toString("base64url"), threadId: payload.threadId } });
+    const previous = payload.draftId ? await this.draftMessageId(payload.draftId) : undefined;
     const res = payload.draftId
-      ? await this.api<{ id: string }>(`drafts/${payload.draftId}`, { method: "PUT", body })
-      : await this.api<{ id: string }>("drafts", { method: "POST", body });
-    return res.id;
+      ? await this.api<{ id: string; message: { id: string } }>(`drafts/${payload.draftId}`, { method: "PUT", body })
+      : await this.api<{ id: string; message: { id: string } }>("drafts", { method: "POST", body });
+    return {
+      draftId: res.id,
+      stored: [res.message.id],
+      removed: previous && previous !== res.message.id ? [previous] : [],
+    };
   }
 
-  async deleteDraft(draftId: string) {
+  async deleteDraft(draftId: string): Promise<WriteOutcome> {
+    const messageId = await this.draftMessageId(draftId);
     await this.api(`drafts/${draftId}`, { method: "DELETE" });
+    return { removed: messageId ? [messageId] : [] };
+  }
+
+  async fetchMessages(ids: string[]): Promise<NormalizedMessage[]> {
+    return (await this.getMetadata(ids)).map((m) => normalize(m));
   }
 
   async resolveDraftId(message: MessageRef): Promise<string | undefined> {

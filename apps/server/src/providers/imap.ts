@@ -11,13 +11,14 @@ import { isInlineAttachment } from "../lib/mime";
 import type {
   AttachmentMeta,
   Body,
-  Mailbox,
   MailProvider,
+  Mailbox,
   MessageRef,
   NormalizedLabel,
   NormalizedMessage,
   OutgoingPayload,
   SyncSink,
+  WriteOutcome,
 } from "./types";
 
 interface ServerEndpoint {
@@ -819,7 +820,7 @@ export class ImapProvider implements MailProvider {
     });
   }
 
-  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<string> {
+  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<{ draftId: string } & WriteOutcome> {
     return this.withClient(async (client) => {
       const drafts = await this.requirePath(client, "DRAFT");
       const res = await client.append(drafts, raw, ["\\Draft", "\\Seen"]);
@@ -829,13 +830,15 @@ export class ImapProvider implements MailProvider {
           ? { mailbox: drafts, uidValidity: res.uidValidity.toString(), uid: res.uid }
           : await this.locateByMessageId(client, drafts, rawHeader(raw, "Message-ID"));
       const id = formatMessageId(ref);
-      if (payload.draftId && payload.draftId !== id) await this.removeDraft(client, payload.draftId).catch(() => undefined);
-      return id;
+      const replaced = payload.draftId && payload.draftId !== id ? payload.draftId : undefined;
+      if (replaced) await this.removeDraft(client, replaced).catch(() => undefined);
+      return { draftId: id, removed: replaced ? [replaced] : [] };
     });
   }
 
-  async deleteDraft(draftId: string) {
+  async deleteDraft(draftId: string): Promise<WriteOutcome> {
     await this.withClient((client) => this.removeDraft(client, draftId));
+    return { removed: [draftId] };
   }
 
   private userPath(id: string): string {

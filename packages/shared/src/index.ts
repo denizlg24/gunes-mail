@@ -51,8 +51,24 @@ export type RuleAction =
   | { type: "delay_send"; minutes: number }
   | { type: "add_bcc"; email: string };
 
+/** Present while an account's first full download is still running. */
+export interface SyncProgress {
+  /** Messages stored so far. */
+  synced: number;
+  /** Messages in the mailbox, when the provider reports it. */
+  total: number | null;
+  /** Recent mail arrives first, then older mail is backfilled. */
+  phase: "recent" | "older";
+}
+
 export type ServerEvent =
-  | { type: "sync"; accountId: string; status: "syncing" | "ready" | "error"; error?: string }
+  | {
+      type: "sync";
+      accountId: string;
+      status: "syncing" | "ready" | "error";
+      error?: string;
+      progress?: SyncProgress | null;
+    }
   | { type: "changed"; accountId: string }
   | { type: "outbox"; id: string; status: string; error?: string }
   | { type: "settings" };

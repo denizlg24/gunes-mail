@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 import { type AppEnv, requireUser } from "./auth";
 import { env } from "./env";
 import { ProviderError } from "./lib/http";
+import { recordError, recordRequest } from "./lib/observe";
 import { account, publicAccount } from "./routes/account";
 import { connect } from "./routes/connect";
 import { extras } from "./routes/extras";
@@ -17,6 +18,13 @@ import { releases } from "./routes/releases";
 export const app = new Hono<AppEnv>();
 
 app.use("*", secureHeaders());
+app.use("*", async (c, next) => {
+  const start = performance.now();
+  await next();
+  if (c.req.path !== "/v1/events" && c.req.path !== "/health") {
+    recordRequest(c.req.path, c.res.status, performance.now() - start);
+  }
+});
 app.use(
   "*",
   cors({ origin: env.CORS_ORIGINS, allowHeaders: ["authorization", "content-type", "x-device-name"], maxAge: 600 }),
@@ -38,12 +46,21 @@ app.route("/v1", mail);
 app.route("/v1", extras);
 
 app.onError((err, c) => {
-  if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
+  if (err instanceof HTTPException && err.status < 500) return c.json({ error: err.message }, err.status);
   if (err instanceof ZodError) return c.json({ error: err.issues.map((i) => i.message).join("; ") }, 400);
+  const userId: string | undefined = c.get("userId");
+  const where = { userId, method: c.req.method, path: c.req.path };
   if (err instanceof ProviderError) {
     const status = err.status === 401 ? 409 : err.status >= 400 && err.status < 500 ? 400 : 502;
-    return c.json({ error: err.message }, status);
+    const ref = recordError({ kind: "provider", ...where, status: err.status, message: err.message, stack: err.stack });
+    return c.json({ error: err.message, ref }, status);
   }
-  console.error(err);
-  return c.json({ error: "Something went wrong" }, 500);
+  const ref = recordError({
+    kind: "request",
+    ...where,
+    status: 500,
+    message: err.message || String(err),
+    stack: err.stack,
+  });
+  return c.json({ error: "Something went wrong on our side", ref }, 500);
 });

@@ -148,7 +148,10 @@ export class MessageStore implements SyncSink {
   readonly inserted: string[] = [];
   changed = false;
 
-  constructor(private readonly account: AccountContext) {}
+  constructor(
+    private readonly account: AccountContext,
+    private readonly onInserted?: (count: number) => void,
+  ) {}
 
   async upsertMessages(list: NormalizedMessage[]) {
     if (!list.length) return;
@@ -214,6 +217,7 @@ export class MessageStore implements SyncSink {
       [this.account.email],
       list.filter((m) => insertedIds.has(m.id)),
     );
+    if (insertedIds.size) this.onInserted?.(insertedIds.size);
   }
 
   async updateLabels(updates: { id: string; labelIds: string[] }[]) {

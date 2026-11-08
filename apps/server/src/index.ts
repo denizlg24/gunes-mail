@@ -1,8 +1,10 @@
 import { app } from "./app";
 import { runMigrations } from "./db/migrate";
 import { env } from "./env";
+import { startObservability } from "./lib/observe";
 import { startWorkers } from "./sync/engine";
 
+startObservability();
 await runMigrations();
 startWorkers();
 
@@ -12,4 +14,4 @@ export default {
   idleTimeout: 0,
 };
 
-console.log(`gunes-mail-server listening on :${env.PORT}`);
+console.info(`gunes-mail-server listening on :${env.PORT}`);

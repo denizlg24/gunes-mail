@@ -6,13 +6,14 @@ import type {
   AttachmentMeta,
   Body,
   Contact,
-  Mailbox,
   MailProvider,
+  Mailbox,
   MessageRef,
   NormalizedLabel,
   NormalizedMessage,
   OutgoingPayload,
   SyncSink,
+  WriteOutcome,
 } from "./types";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -582,7 +583,7 @@ export class MicrosoftProvider implements MailProvider {
     if (payload.draftId) await this.deleteDraft(payload.draftId).catch(() => undefined);
   }
 
-  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<string> {
+  async saveDraft(raw: Buffer, payload: OutgoingPayload): Promise<{ draftId: string } & WriteOutcome> {
     const draft = await this.api<{ id: string }>("/me/messages", {
       method: "POST",
       headers: { "content-type": "text/plain" },
@@ -593,11 +594,12 @@ export class MicrosoftProvider implements MailProvider {
         if (!(e instanceof ProviderError && e.status === 404)) throw e;
       });
     }
-    return draft.id;
+    return { draftId: draft.id, removed: payload.draftId ? [payload.draftId] : [] };
   }
 
-  async deleteDraft(draftId: string) {
+  async deleteDraft(draftId: string): Promise<WriteOutcome> {
     await this.api(`/me/messages/${encodeURIComponent(draftId)}`, { method: "DELETE" });
+    return { removed: [draftId] };
   }
 
   async createLabel(name: string): Promise<NormalizedLabel> {

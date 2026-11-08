@@ -183,3 +183,46 @@ export const outbox = pgTable(
   },
   (t) => [index("outbox_due").on(t.status, t.sendAt)],
 );
+
+/** Every failed request or sync run, addressable by the reference users quote to support. */
+export const errorEvents = pgTable(
+  "error_events",
+  {
+    ref: text("ref").primaryKey(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    kind: text("kind", { enum: ["request", "provider", "sync", "send"] }).notNull(),
+    userId: uuid("user_id"),
+    accountId: uuid("account_id"),
+    method: text("method"),
+    path: text("path"),
+    status: integer("status"),
+    message: text("message").notNull(),
+    stack: text("stack"),
+  },
+  (t) => [index("error_events_created_idx").on(t.createdAt)],
+);
+
+/** Request counts and latency per minute, route and status class. */
+export const requestStats = pgTable(
+  "request_stats",
+  {
+    minute: timestamp("minute", { withTimezone: true }).notNull(),
+    route: text("route").notNull(),
+    statusClass: text("status_class").notNull(),
+    count: integer("count").notNull(),
+    totalMs: integer("total_ms").notNull(),
+    maxMs: integer("max_ms").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.minute, t.route, t.statusClass] })],
+);
+
+export const logEntries = pgTable(
+  "log_entries",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    level: text("level", { enum: ["info", "warn", "error"] }).notNull(),
+    message: text("message").notNull(),
+  },
+  (t) => [index("log_entries_created_idx").on(t.createdAt)],
+);
