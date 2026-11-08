@@ -7,6 +7,6 @@ export const site = {
   issues: "https://github.com/denizlg24/gunes-mail/issues",
   /** The person or company operating the service, as shown on the Google consent screen. */
   operator: process.env.NEXT_PUBLIC_OPERATOR_NAME ?? "the Güneş Mail developer",
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "",
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "geral@oceaninformatix.com",
   legalUpdated: "8 November 2026",
 };

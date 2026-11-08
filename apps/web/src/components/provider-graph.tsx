@@ -1,14 +1,15 @@
 import { LogoMark } from "./logo";
+import { PROVIDER_ICONS } from "./provider-icons";
 
 const PROVIDERS = [
-  { name: "Gmail", mark: "G", tint: "#ea4335", x: 8, y: 22 },
-  { name: "Microsoft 365", mark: "M", tint: "#0078d4", x: 22, y: 8 },
-  { name: "Outlook.com", mark: "O", tint: "#28a8ea", x: 26, y: 70 },
-  { name: "Zoho Mail", mark: "Z", tint: "#e42527", x: 40, y: 92 },
-  { name: "Any IMAP", mark: "@", tint: "#9aa4b8", x: 60, y: 92 },
-  { name: "iCloud Mail", mark: "i", tint: "#3693f3", x: 74, y: 70 },
-  { name: "Fastmail", mark: "F", tint: "#5d6bf0", x: 78, y: 8 },
-  { name: "Yahoo Mail", mark: "Y", tint: "#7e1fff", x: 92, y: 22 },
+  { name: "Gmail", x: 8, y: 22 },
+  { name: "Microsoft 365", x: 22, y: 8 },
+  { name: "Outlook.com", x: 26, y: 70 },
+  { name: "Zoho Mail", x: 40, y: 92 },
+  { name: "Any IMAP", x: 60, y: 92 },
+  { name: "iCloud Mail", x: 74, y: 70 },
+  { name: "Fastmail", x: 78, y: 8 },
+  { name: "Yahoo Mail", x: 92, y: 22 },
 ];
 
 const HUB = { x: 50, y: 42 };
@@ -52,12 +53,11 @@ export function ProviderGraph() {
       {PROVIDERS.map((p) => (
         <div
           key={p.name}
-          className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
+          className={`absolute flex -translate-x-1/2 items-center gap-2 ${p.y < HUB.y ? "-translate-y-[calc(100%-24px)] flex-col-reverse" : "-translate-y-6 flex-col"}`}
           style={{ left: `${p.x}%`, top: `${p.y}%` }}
         >
-          <span className="relative flex size-12 items-center justify-center rounded-xl bg-[#0d1220] text-[17px] font-semibold text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-white/12">
-            {p.mark}
-            <span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-[#05070b]" style={{ background: p.tint }} />
+          <span className="flex size-12 items-center justify-center rounded-xl bg-[#121722] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-white/12">
+            {PROVIDER_ICONS[p.name]()}
           </span>
           <span className="text-[11px] whitespace-nowrap text-white/45">{p.name}</span>
         </div>

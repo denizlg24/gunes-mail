@@ -11,7 +11,7 @@ COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 ARG NEXT_PUBLIC_SITE_URL=https://gunes-mail.denizlg24.com
 ARG NEXT_PUBLIC_API_URL=https://gunes-mail-api.denizlg24.com
-ARG NEXT_PUBLIC_CONTACT_EMAIL=
+ARG NEXT_PUBLIC_CONTACT_EMAIL=geral@oceaninformatix.com
 ARG NEXT_PUBLIC_OPERATOR_NAME=
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN cd apps/web && bun run build
