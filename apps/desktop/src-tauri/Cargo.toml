@@ -1,6 +1,6 @@
 [package]
 name = "gunes-mail"
-version = "0.1.0"
+version = "0.2.0"
 description = "Outlook-style desktop mail client for Gmail"
 edition = "2024"
 rust-version = "1.90"
