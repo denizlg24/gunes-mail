@@ -1,9 +1,9 @@
-import { ArrowDownIcon, ArrowRightIcon, ClockIcon, FilterIcon, InboxIcon, KeyboardIcon, SendIcon, SparklesIcon } from "lucide-react";
+import { ArrowDownIcon, ClockIcon, FilterIcon, InboxIcon, KeyboardIcon, SendIcon, SparklesIcon } from "lucide-react";
 
+import { DownloadButtons, DownloadCaption } from "@/components/download-button";
 import { FeatureShowcase } from "@/components/feature-showcase";
 import { ProviderGraph } from "@/components/provider-graph";
 import { SiteFooter, SiteNav } from "@/components/site-chrome";
-import { site } from "@/lib/site";
 
 const TILES = [
   { Icon: InboxIcon, left: "9%", top: "34%", tilt: "-8deg", delay: "0s" },
@@ -65,22 +65,9 @@ function Hero() {
         <p className="mx-auto mt-6 max-w-xl text-[17px] leading-relaxed text-white/55">
           A fast desktop mail client for Gmail, Outlook and everything else, that keeps working while your laptop sleeps.
         </p>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={site.releases}
-            className="group inline-flex items-center gap-3 rounded-full bg-white py-1.5 pr-1.5 pl-6 text-[15px] font-medium text-[#080b12] transition hover:bg-white/90"
-          >
-            Download for free
-            <span className="flex size-9 items-center justify-center rounded-full bg-[#2f6bff] text-white">
-              <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </a>
-          <a
-            href={site.repo}
-            className="rounded-full px-6 py-3 text-[15px] text-white/70 ring-1 ring-white/12 transition hover:bg-white/[0.05] hover:text-white"
-          >
-            Read the source
-          </a>
+        <div className="mt-10">
+          <DownloadButtons />
+          <DownloadCaption />
         </div>
       </div>
 
@@ -144,7 +131,7 @@ export default function Home() {
           Feels like the mail app you already know.{" "}
           <span className="text-white/35">Only faster.</span>
         </h2>
-        <div className="mt-16 rounded-[28px] bg-[#f7f6f2] p-6 sm:p-12">
+        <div className="surface-light mt-16 rounded-[28px] bg-[#f7f6f2] p-6 sm:p-12">
           <FeatureShowcase />
         </div>
       </section>
@@ -192,24 +179,17 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden rounded-[28px] bg-[#080b12] px-6 py-28 text-center ring-1 ring-white/[0.07]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-1/2 left-1/2 h-full w-[80%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(closest-side,rgba(47,107,255,0.35),transparent)] blur-2xl"
-        />
+      <section className="relative rounded-[28px] bg-[#080b12] px-6 py-28 text-center ring-1 ring-white/[0.07]">
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
+          <div className="absolute -bottom-1/2 left-1/2 h-full w-[80%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(closest-side,rgba(47,107,255,0.35),transparent)] blur-2xl" />
+        </div>
         <h2 className="relative text-[40px] leading-[1.05] font-medium tracking-[-0.035em] text-white sm:text-[60px]">
           Bring every inbox home.
         </h2>
         <p className="relative mt-5 text-white/50">macOS, Windows and Linux. Free, open source, yours to delete anytime.</p>
-        <a
-          href={site.releases}
-          className="group relative mt-10 inline-flex items-center gap-3 rounded-full bg-white py-1.5 pr-1.5 pl-6 text-[15px] font-medium text-[#080b12] transition hover:bg-white/90"
-        >
-          Download Güneş Mail
-          <span className="flex size-9 items-center justify-center rounded-full bg-[#2f6bff] text-white">
-            <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </a>
+        <div className="relative mt-10">
+          <DownloadButtons side="top" />
+        </div>
       </section>
 
       <SiteFooter tone="dark" />

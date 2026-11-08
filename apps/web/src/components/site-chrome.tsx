@@ -4,6 +4,7 @@ import Link from "next/link";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
+import { DownloadLink } from "./download-button";
 import { Logo } from "./logo";
 
 type Tone = "dark" | "light";
@@ -40,8 +41,7 @@ export function SiteNav({ tone }: { tone: Tone }) {
           </Link>
         ))}
       </nav>
-      <a
-        href={site.releases}
+      <DownloadLink
         className={cn(
           "group inline-flex items-center gap-2 rounded-full py-1 pr-1 pl-4 text-[13px] font-medium transition-colors",
           dark ? "bg-white/[0.06] text-white ring-1 ring-white/12 hover:bg-white/[0.1]" : "bg-ink text-paper hover:bg-ink/90",
@@ -51,7 +51,7 @@ export function SiteNav({ tone }: { tone: Tone }) {
         <span className="flex size-7 items-center justify-center rounded-full bg-[#2f6bff] text-white">
           <ArrowUpRightIcon className="size-3.5 transition-transform group-hover:translate-x-px group-hover:-translate-y-px" />
         </span>
-      </a>
+      </DownloadLink>
     </header>
   );
 }

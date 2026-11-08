@@ -40,6 +40,14 @@
   }
 }
 
+/* Panels with a fixed light background keep light-mode text colors in dark mode. */
+.surface-light {
+  --ink: #1c1b1f;
+  --muted: #6b6a73;
+  --line: #ebe8e2;
+  color: var(--ink);
+}
+
 @keyframes drift {
   0%,
   100% {
