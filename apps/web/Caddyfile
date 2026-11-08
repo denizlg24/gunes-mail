@@ -3,7 +3,7 @@
 	auto_https off
 }
 
-:3000 {
+:80 {
 	root * /srv
 	encode zstd gzip
 	header {

@@ -19,5 +19,5 @@ RUN cd apps/web && bun run build
 FROM caddy:2.10-alpine
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/apps/web/out /srv
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["wget", "-qO-", "http://127.0.0.1:3000/"]
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["wget", "-qO-", "http://127.0.0.1:80/"]
