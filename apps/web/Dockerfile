@@ -1,5 +1,5 @@
 # Build context: repository root (the site depends on packages/shared).
-FROM oven/bun:1.3.14-alpine AS build
+FROM oven/bun:1.4.4-alpine AS build
 WORKDIR /repo
 COPY package.json bun.lock ./
 COPY apps/desktop/package.json apps/desktop/
