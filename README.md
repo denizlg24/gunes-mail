@@ -11,6 +11,7 @@ All your inboxes in one calm desktop app. Güneş Mail is an Outlook-style mail 
 | `apps/desktop` | Tauri 2 desktop app (Rust shell + Next.js 16 static UI, shadcn/ui) |
 | `apps/server` | Sync service: Bun + Hono + Postgres (Drizzle). Gmail, Microsoft Graph and IMAP sync, rules, outbox, accounts |
 | `apps/web` | Marketing site, privacy policy, terms, web account page (static Next.js served by Caddy) |
+| `apps/admin` | Operations dashboard: health, traffic, errors by reference, mailbox sync status, logs (Bun + Hono) |
 | `packages/shared` | API contract types shared by all three |
 
 ```
@@ -87,6 +88,15 @@ Clear any build or start command overrides on both targets. Migrations run autom
 
 - `NEXT_PUBLIC_CONTACT_EMAIL`: required for Google verification.
 - `NEXT_PUBLIC_OPERATOR_NAME`: the name shown on your consent screen.
+
+## Support references and the admin dashboard
+
+Every failed request, sync run or scheduled send gets a reference such as `GM-7K3QX9P2`. The API returns it with the error, the desktop app shows it next to error messages (click to copy), and it is stored with the stack trace in `error_events`. The server also writes per-minute request metrics (`request_stats`) and its warnings and errors (`log_entries`); old rows are pruned automatically (30 days for errors, 14 for the rest).
+
+`apps/admin` reads those tables, read-only, and serves a dashboard at `gunes-mail-admin.denizlg24.com`: service health, request volume and latency, errors by kind, top routes, a reference lookup with the full stack, per-mailbox sync progress and a live log tail. It is a separate Forge target (`apps/admin/Dockerfile`, health path `/health`) bound to the same Postgres resource, with:
+
+- `ADMIN_PASSWORD`: at least 16 characters; sessions last 12 hours and logins are limited to 5 attempts per 15 minutes per address.
+- `ADMIN_SESSION_SECRET` (optional): signs session cookies; defaults to a value derived from the password.
 
 ## Releases
 
