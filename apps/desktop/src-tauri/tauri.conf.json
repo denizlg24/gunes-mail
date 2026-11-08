@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Gunes Mail",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "com.denizlg24.gunesmail",
   "build": {
     "frontendDist": "../out",
@@ -20,6 +20,7 @@
         "minHeight": 600,
         "resizable": true,
         "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 16, "y": 22 },
         "hiddenTitle": true,
         "center": true
       }
@@ -31,7 +32,9 @@
         "img-src": "'self' data: blob: https: http:",
         "style-src": "'self' 'unsafe-inline'",
         "font-src": "'self' data:",
-        "script-src": "'self'",
+        "script-src": "'self' 'wasm-unsafe-eval'",
+        "worker-src": "'self' blob:",
+        "media-src": "'self' blob:",
         "frame-src": "'self' about: data: blob:"
       },
       "devCsp": null
