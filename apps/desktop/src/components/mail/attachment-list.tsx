@@ -7,7 +7,9 @@ import {
   FileSpreadsheetIcon,
   FileTextIcon,
   FolderOpenIcon,
+  EyeIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -19,6 +21,8 @@ import {
 import { errorMessage, getApi } from "@/lib/api";
 import { fileSize } from "@/lib/format";
 import type { Attachment } from "@/lib/types";
+
+import { AttachmentPreview } from "./attachment-preview";
 
 function iconFor(mime: string, name: string) {
   if (mime.startsWith("image/")) return { Icon: FileImageIcon, color: "#8764B8" };
@@ -39,6 +43,7 @@ export function AttachmentList({
   attachments: Attachment[];
 }) {
   const visible = attachments.filter((a) => !a.inline);
+  const [previewing, setPreviewing] = useState<number | null>(null);
   if (!visible.length) return null;
 
   const save = async (a: Attachment, open: boolean) => {
@@ -62,7 +67,7 @@ export function AttachmentList({
                 <button
                   type="button"
                   title={a.filename}
-                  onClick={() => void save(a, true)}
+                  onClick={() => setPreviewing(i)}
                   className="group/att flex h-12 w-56 items-center gap-2.5 rounded-md border border-border bg-pane px-2.5 text-left transition-colors hover:border-input hover:bg-hover"
                 />
               }
@@ -85,9 +90,13 @@ export function AttachmentList({
               </span>
             </ContextMenuTrigger>
             <ContextMenuContent>
+              <ContextMenuItem onClick={() => setPreviewing(i)}>
+                <EyeIcon />
+                Preview
+              </ContextMenuItem>
               <ContextMenuItem onClick={() => void save(a, true)}>
                 <ExternalLinkIcon />
-                Open
+                Open with default app
               </ContextMenuItem>
               <ContextMenuItem onClick={() => void save(a, false)}>
                 <FolderOpenIcon />
@@ -97,6 +106,17 @@ export function AttachmentList({
           </ContextMenu>
         );
       })}
+      {previewing !== null && visible[previewing] && (
+        <AttachmentPreview
+          accountId={accountId}
+          messageId={messageId}
+          attachments={visible}
+          index={previewing}
+          onIndexChange={setPreviewing}
+          onClose={() => setPreviewing(null)}
+          onSave={(a, open) => void save(a, open)}
+        />
+      )}
     </div>
   );
 }

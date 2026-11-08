@@ -52,6 +52,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** Support reference for server-side failures, e.g. GM-7K3QX9P2. */
+    readonly ref?: string,
   ) {
     super(message);
   }
@@ -85,8 +87,8 @@ export class ServerMailApi implements MailApi {
       throw new ApiError(0, "Can't reach the Güneş Mail server. Check your connection.");
     }
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`);
+      const body = (await res.json().catch(() => null)) as { error?: string; ref?: string } | null;
+      throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.ref);
     }
     if (res.status === 204 || res.status === 202) return undefined as T;
     return (await res.json()) as T;
@@ -308,13 +310,21 @@ export class ServerMailApi implements MailApi {
     return `/v1/accounts/${accountId}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
   }
 
-  async getAttachmentData(accountId: string, messageId: string, attachmentId: string) {
+  async getAttachmentBlob(accountId: string, messageId: string, attachmentId: string) {
     const { apiUrl, token } = await this.ensureSession();
     const res = await fetch(`${apiUrl}${this.attachmentPath(accountId, messageId, attachmentId)}`, {
       headers: token ? { authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) throw new ApiError(res.status, "Couldn't load the attachment");
-    return bytesToBase64(new Uint8Array(await res.arrayBuffer()));
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string; ref?: string } | null;
+      throw new ApiError(res.status, body?.error ?? "Couldn't load the attachment", body?.ref);
+    }
+    return res.blob();
+  }
+
+  async getAttachmentData(accountId: string, messageId: string, attachmentId: string) {
+    const blob = await this.getAttachmentBlob(accountId, messageId, attachmentId);
+    return bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
   }
 
   saveAttachment(accountId: string, messageId: string, attachment: Attachment, open: boolean) {

@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --animate-progress-slide: progress-slide 1.4s ease-in-out infinite;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
@@ -335,5 +336,14 @@
     float: left;
     height: 0;
     pointer-events: none;
+  }
+}
+
+@keyframes progress-slide {
+  from {
+    left: -33%;
+  }
+  to {
+    left: 100%;
   }
 }

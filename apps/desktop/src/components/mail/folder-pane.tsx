@@ -34,7 +34,7 @@ import { useContextTarget } from "@/hooks/use-context-target";
 import { keys, useAccounts, useLabels, useMailActions } from "@/hooks/use-mail";
 import { errorMessage, getApi } from "@/lib/api";
 import { type LabelNode, type SystemFolder, SYSTEM_FOLDERS, buildLabelTree, isMovableTarget, leafName } from "@/lib/folders";
-import type { Account, Label } from "@/lib/types";
+import type { Account, Label, SyncProgress } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/store/ui";
 
@@ -227,7 +227,7 @@ function AccountTree({ account, onMenu }: { account: Account; onMenu: (t: MenuTa
       >
         {collapsed ? <ChevronRightIcon className="size-4 text-subtle" /> : <ChevronDownIcon className="size-4 text-subtle" />}
         <span className={cn("min-w-0 flex-1 truncate", isActive && "text-foreground")}>{account.email}</span>
-        {account.status === "syncing" && !account.lastSyncedAt && (
+        {account.status === "syncing" && (account.progress || !account.lastSyncedAt) && (
           <Loader2Icon aria-label="Syncing" className="size-3.5 shrink-0 animate-spin text-subtle" />
         )}
         {account.status === "error" && (
@@ -236,6 +236,7 @@ function AccountTree({ account, onMenu }: { account: Account; onMenu: (t: MenuTa
           </span>
         )}
       </div>
+      {account.progress && <SyncProgressBar progress={account.progress} />}
       {!collapsed && (
         <div role="group">
           {SYSTEM_FOLDERS.map((f) => (
@@ -419,5 +420,38 @@ export function FolderPane() {
         )}
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+const formatCount = new Intl.NumberFormat();
+
+function SyncProgressBar({ progress }: { progress: SyncProgress }) {
+  const total = progress.total && progress.total >= progress.synced ? progress.total : null;
+  const pct = total ? Math.max(2, Math.round((progress.synced / total) * 100)) : null;
+  const label = progress.phase === "recent" ? "Syncing recent mail" : "Syncing older mail";
+  const detail = `${formatCount.format(progress.synced)}${total ? ` of ${formatCount.format(total)}` : ""} messages downloaded`;
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuetext={detail}
+      title={detail}
+      aria-valuemin={0}
+      aria-valuemax={total ?? undefined}
+      aria-valuenow={total ? progress.synced : undefined}
+      className="mb-1 flex flex-col gap-1 pr-1.5 pl-7"
+    >
+      <div className="flex items-baseline justify-between gap-2 text-[11px] text-subtle">
+        <span className="truncate">{label}</span>
+        <span className="shrink-0 tabular-nums">{pct === null ? formatCount.format(progress.synced) : `${pct}%`}</span>
+      </div>
+      <div className="relative h-1 overflow-hidden rounded-full bg-muted">
+        {pct === null ? (
+          <div className="animate-progress-slide absolute inset-y-0 w-1/3 rounded-full bg-brand" />
+        ) : (
+          <div className="h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${pct}%` }} />
+        )}
+      </div>
+    </div>
   );
 }

@@ -649,6 +649,11 @@ export class DemoMailApi implements MailApi {
     return "";
   }
 
+  async getAttachmentBlob(_accountId: string, _messageId: string, attachmentId: string) {
+    await delay(200);
+    return new Blob([`Demo attachment ${attachmentId}\n\nAttachments preview here in the desktop app.`], { type: "text/plain" });
+  }
+
   async saveAttachment(_accountId: string, _messageId: string, attachment: Attachment) {
     await delay(300);
     return `~/Downloads/${attachment.filename}`;

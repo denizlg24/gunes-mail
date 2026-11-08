@@ -31,6 +31,7 @@ import { useUi } from "@/store/ui";
 import { AttachmentList } from "./attachment-list";
 import { Compose } from "./compose";
 import { EmailFrame } from "./email-frame";
+import { ErrorReference } from "./error-reference";
 import { PersonAvatar } from "./person-avatar";
 
 function IconAction({
@@ -245,7 +246,12 @@ function ThreadView({ accountId, threadId }: { accountId: string; threadId: stri
     );
   }
   if (isError || !thread) {
-    return <div className="p-6 text-[13px] text-subtle">Couldn&apos;t load this conversation. {error?.message}</div>;
+    return (
+      <div className="flex flex-col items-start gap-2 p-6 text-[13px] text-subtle">
+        <div>Couldn&apos;t load this conversation. {error?.message}</div>
+        <ErrorReference error={error} />
+      </div>
+    );
   }
 
   const isExpanded = (m: Message, index: number) =>

@@ -6,6 +6,7 @@ import type {
   RuleAction,
   RuleCondition,
   ServerEvent,
+  SyncProgress,
   UserProfile,
   UserSettings,
 } from "@gunes/shared";
@@ -19,6 +20,7 @@ export type {
   RuleField,
   RuleOperator,
   ServerEvent,
+  SyncProgress,
 } from "@gunes/shared";
 export type OutgoingMessage = OutgoingPayload;
 
@@ -31,6 +33,7 @@ export interface Account {
   status: "syncing" | "ready" | "error";
   lastError?: string | null;
   lastSyncedAt?: number | null;
+  progress?: SyncProgress | null;
 }
 
 export interface LabelColor {
@@ -229,6 +232,7 @@ export interface MailApi {
   renameLabel(accountId: string, labelId: string, name: string): Promise<void>;
   deleteLabel(accountId: string, labelId: string): Promise<void>;
   getAttachmentData(accountId: string, messageId: string, attachmentId: string): Promise<string>;
+  getAttachmentBlob(accountId: string, messageId: string, attachmentId: string): Promise<Blob>;
   saveAttachment(accountId: string, messageId: string, attachment: Attachment, open: boolean): Promise<string>;
   searchContacts(query: string): Promise<Contact[]>;
   contactPhotos(emails: string[]): Promise<Record<string, string>>;

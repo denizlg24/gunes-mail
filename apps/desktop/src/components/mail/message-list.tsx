@@ -21,6 +21,7 @@ import type { ListFilter, ThreadSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/store/ui";
 
+import { ErrorReference } from "./error-reference";
 import { DRAG_MIME, type DragPayload } from "./folder-pane";
 import { ContextMenuEntries, useMessageMenu } from "./menu-entries";
 import { MessageRow, type RowHandlers } from "./message-row";
@@ -387,6 +388,7 @@ export function MessageList() {
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-subtle">
               <div className="font-semibold text-foreground">Couldn&apos;t load messages</div>
               <div>{query.error.message}</div>
+              <ErrorReference error={query.error} />
               <button type="button" onClick={() => void query.refetch()} className="mt-1 text-brand hover:underline">
                 Try again
               </button>

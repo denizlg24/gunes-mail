@@ -11,7 +11,7 @@ import { keys, useAccounts, useSession } from "@/hooks/use-mail";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
 import { useUpdater } from "@/hooks/use-updater";
 import { errorMessage, getApi } from "@/lib/api";
-import type { ServerEvent } from "@/lib/types";
+import type { Account, ServerEvent } from "@/lib/types";
 import { useUi } from "@/store/ui";
 
 import { AddAccountDialog } from "./add-account-dialog";
@@ -136,7 +136,16 @@ export function MailApp() {
         void qc.invalidateQueries({ queryKey: keys.labels(event.accountId) });
         void qc.invalidateQueries({ queryKey: ["thread", event.accountId] });
       } else if (event.type === "sync") {
-        void qc.invalidateQueries({ queryKey: keys.accounts });
+        const current = qc.getQueryData<Account[]>(keys.accounts)?.find((a) => a.id === event.accountId);
+        // Progress ticks arrive every second while downloading; patch them in place
+        // and only refetch when the account's state actually changes.
+        if (current && current.status === event.status && event.status === "syncing") {
+          qc.setQueryData<Account[]>(keys.accounts, (list) =>
+            list?.map((a) => (a.id === event.accountId ? { ...a, progress: event.progress ?? null } : a)),
+          );
+        } else {
+          void qc.invalidateQueries({ queryKey: keys.accounts });
+        }
       } else if (event.type === "settings") {
         void qc.invalidateQueries({ queryKey: ["settings"] });
       } else {
