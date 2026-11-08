@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/out
+**/dist
+**/.turbo
+**/.env
+**/.env.*
+!**/.env.example
+apps/desktop/src-tauri/target
+graft
+.git

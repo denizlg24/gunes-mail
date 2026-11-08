@@ -1,0 +1,65 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Gunes Mail",
+  "version": "0.1.0",
+  "identifier": "com.denizlg24.gunesmail",
+  "build": {
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "bun run dev",
+    "beforeBuildCommand": "bun run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Güneş Mail",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost https://gunes-mail-api.denizlg24.com http://localhost:3100",
+        "img-src": "'self' data: blob: https: http:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "script-src": "'self'",
+        "frame-src": "'self' about: data: blob:"
+      },
+      "devCsp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": true,
+    "category": "Productivity",
+    "shortDescription": "All your inboxes in one desktop app",
+    "publisher": "Güneş Mail",
+    "homepage": "https://gunes-mail.denizlg24.com",
+    "copyright": "Copyright © 2026 Güneş Mail contributors"
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBMDI3NUNGREY3QkM3NjUKUldSbHgzdmZ6M1VDNnFPWDBCREZ4SkpVQ3VBZEZaQmoyNkM5UTh1RFRUaEU3TDZzeGRSbUJnSUQK",
+      "endpoints": [
+        "https://github.com/denizlg24/gunes-mail/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

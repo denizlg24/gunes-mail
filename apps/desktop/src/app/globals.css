@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-strong-hover: var(--brand-strong-hover);
+  --color-titlebar: var(--titlebar);
+  --color-titlebar-foreground: var(--titlebar-foreground);
+  --color-app: var(--app);
+  --color-pane: var(--pane);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-selected-hover: var(--selected-hover);
+  --color-subtle: var(--subtle);
+  --color-flag: var(--flag);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
+}
+
+:root {
+  --radius: 0.375rem;
+
+  --brand: #0f6cbd;
+  --brand-hover: #115ea3;
+  --brand-soft: #ebf3fc;
+  --brand-strong: #0f6cbd;
+  --brand-strong-hover: #115ea3;
+  --titlebar: #0f6cbd;
+  --titlebar-foreground: #ffffff;
+  --app: #f0f0f0;
+  --pane: #ffffff;
+  --hover: #f5f5f5;
+  --selected: #cfe4fa;
+  --selected-hover: #c2dcf7;
+  --subtle: #616161;
+  --flag: #c50f1f;
+
+  --background: #ffffff;
+  --foreground: #242424;
+  --card: #ffffff;
+  --card-foreground: #242424;
+  --popover: #ffffff;
+  --popover-foreground: #242424;
+  --primary: var(--brand-strong);
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #242424;
+  --muted: #f5f5f5;
+  --muted-foreground: #616161;
+  --accent: #f0f0f0;
+  --accent-foreground: #242424;
+  --destructive: #c50f1f;
+  --border: #e0e0e0;
+  --input: #d1d1d1;
+  --ring: var(--brand);
+}
+
+.dark {
+  --brand: #479ef5;
+  --brand-hover: #62abf5;
+  --brand-soft: #082338;
+  --brand-strong: #115ea3;
+  --brand-strong-hover: #0f6cbd;
+  --titlebar: #0c3b5e;
+  --titlebar-foreground: #ffffff;
+  --app: #1a1a1a;
+  --pane: #292929;
+  --hover: #333333;
+  --selected: #0e4775;
+  --selected-hover: #0f548c;
+  --subtle: #adadad;
+  --flag: #ef6950;
+
+  --background: #292929;
+  --foreground: #ffffff;
+  --card: #292929;
+  --card-foreground: #ffffff;
+  --popover: #2e2e2e;
+  --popover-foreground: #ffffff;
+  --primary: var(--brand-strong);
+  --primary-foreground: #ffffff;
+  --secondary: #333333;
+  --secondary-foreground: #ffffff;
+  --muted: #333333;
+  --muted-foreground: #adadad;
+  --accent: #3d3d3d;
+  --accent-foreground: #ffffff;
+  --destructive: #ef6950;
+  --border: #3d3d3d;
+  --input: #525252;
+  --ring: var(--brand);
+}
+
+/* Accent themes: blue is the default palette above. */
+:root[data-accent="teal"] {
+  --brand: #038387;
+  --brand-hover: #026a6d;
+  --brand-soft: #e6f5f5;
+  --selected: #c2e7e7;
+  --selected-hover: #a9dcdc;
+  --titlebar: #038387;
+  --brand-strong: #038387;
+  --brand-strong-hover: #026a6d;
+}
+:root.dark[data-accent="teal"] {
+  --brand: #4ec5c9;
+  --brand-hover: #5fd0d4;
+  --brand-soft: #032a2b;
+  --selected: #024f51;
+  --selected-hover: #036266;
+  --titlebar: #023f40;
+  --brand-strong: #037276;
+  --brand-strong-hover: #038387;
+}
+:root[data-accent="purple"] {
+  --brand: #5c2e91;
+  --brand-hover: #4b2577;
+  --brand-soft: #f2edf8;
+  --selected: #ddd0ee;
+  --selected-hover: #cfbde6;
+  --titlebar: #5c2e91;
+  --brand-strong: #5c2e91;
+  --brand-strong-hover: #4b2577;
+}
+:root.dark[data-accent="purple"] {
+  --brand: #b38ce6;
+  --brand-hover: #c4a3ec;
+  --brand-soft: #22153a;
+  --selected: #3f2766;
+  --selected-hover: #4d2f7c;
+  --titlebar: #2f1d4d;
+  --brand-strong: #6b3fa8;
+  --brand-strong-hover: #7a4abd;
+}
+:root[data-accent="berry"] {
+  --brand: #c239b3;
+  --brand-hover: #a52f98;
+  --brand-soft: #fbeefa;
+  --selected: #f2cfee;
+  --selected-hover: #ebbbe5;
+  --titlebar: #a52f98;
+  --brand-strong: #c239b3;
+  --brand-strong-hover: #a52f98;
+}
+:root.dark[data-accent="berry"] {
+  --brand: #ee8fe4;
+  --brand-hover: #f3a6eb;
+  --brand-soft: #3a1236;
+  --selected: #5e1d57;
+  --selected-hover: #742470;
+  --titlebar: #4a1745;
+  --brand-strong: #a8329b;
+  --brand-strong-hover: #bd3aaf;
+}
+:root[data-accent="sunset"] {
+  --brand: #ca5010;
+  --brand-hover: #ad430d;
+  --brand-soft: #fdf1ea;
+  --selected: #f8d6c2;
+  --selected-hover: #f4c5aa;
+  --titlebar: #ca5010;
+  --brand-strong: #ca5010;
+  --brand-strong-hover: #ad430d;
+}
+:root.dark[data-accent="sunset"] {
+  --brand: #f7945c;
+  --brand-hover: #f9a777;
+  --brand-soft: #3a1a08;
+  --selected: #5c2a0c;
+  --selected-hover: #70340f;
+  --titlebar: #48210a;
+  --brand-strong: #b1460e;
+  --brand-strong-hover: #c4500f;
+}
+:root[data-accent="green"] {
+  --brand: #107c10;
+  --brand-hover: #0e6a0e;
+  --brand-soft: #ebf6eb;
+  --selected: #c7e5c7;
+  --selected-hover: #b3dbb3;
+  --titlebar: #107c10;
+  --brand-strong: #107c10;
+  --brand-strong-hover: #0e6a0e;
+}
+:root.dark[data-accent="green"] {
+  --brand: #6ccb5f;
+  --brand-hover: #83d677;
+  --brand-soft: #0d2a0d;
+  --selected: #164c16;
+  --selected-hover: #1c5e1c;
+  --titlebar: #123d12;
+  --brand-strong: #0f7a0f;
+  --brand-strong-hover: #128c12;
+}
+:root[data-accent="red"] {
+  --brand: #c50f1f;
+  --brand-hover: #a50d1a;
+  --brand-soft: #fdeced;
+  --selected: #f6c8cc;
+  --selected-hover: #f1b2b8;
+  --titlebar: #c50f1f;
+  --brand-strong: #c50f1f;
+  --brand-strong-hover: #a50d1a;
+}
+:root.dark[data-accent="red"] {
+  --brand: #f1707b;
+  --brand-hover: #f4888f;
+  --brand-soft: #3b0a0e;
+  --selected: #5e1118;
+  --selected-hover: #74151d;
+  --titlebar: #4a0d13;
+  --brand-strong: #b10e1c;
+  --brand-strong-hover: #c51322;
+}
+:root[data-accent="graphite"] {
+  --brand: #424242;
+  --brand-hover: #2e2e2e;
+  --brand-soft: #f2f2f2;
+  --selected: #dcdcdc;
+  --selected-hover: #cfcfcf;
+  --titlebar: #2b2b2b;
+  --brand-strong: #424242;
+  --brand-strong-hover: #2e2e2e;
+}
+:root.dark[data-accent="graphite"] {
+  --brand: #c8c8c8;
+  --brand-hover: #dadada;
+  --brand-soft: #2b2b2b;
+  --selected: #474747;
+  --selected-hover: #545454;
+  --titlebar: #1f1f1f;
+  --brand-strong: #5c5c5c;
+  --brand-strong-hover: #6b6b6b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    @apply h-full overflow-hidden font-sans;
+    font-size: 14px;
+  }
+  body {
+    @apply bg-app text-foreground antialiased;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+    overscroll-behavior: none;
+  }
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  button {
+    cursor: default;
+  }
+}
+
+@layer components {
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .thin-scroll:hover {
+    scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent;
+  }
+
+  .compose-editor .ProseMirror {
+    outline: none;
+    min-height: 220px;
+    line-height: 1.5;
+  }
+  .compose-editor .ProseMirror p {
+    margin: 0 0 0.5em;
+  }
+  .compose-editor .ProseMirror ul {
+    list-style: disc;
+    padding-left: 1.5em;
+  }
+  .compose-editor .ProseMirror ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+  }
+  .compose-editor .ProseMirror a {
+    color: var(--brand);
+    text-decoration: underline;
+  }
+  .compose-editor .ProseMirror blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: 0.75em;
+    color: var(--muted-foreground);
+  }
+  .compose-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
