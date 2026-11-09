@@ -10,6 +10,7 @@ import {
   draftCompose,
   newCompose,
   replyCompose,
+  resolveCidImages,
 } from "@/lib/compose";
 import { ARCHIVE } from "@/lib/folders";
 import type { Account, Label, OutgoingAttachment, Thread } from "@/lib/types";
@@ -120,8 +121,17 @@ export function useCommands() {
         const thread = await fetchThread(accountId, threadId);
         const message = [...thread.messages].reverse().find((m) => m.draft);
         if (!message) return;
-        const draftId = await getApi().findDraftId(accountId, message.id);
-        await openCompose(draftCompose(accountId, message, draftId));
+        const api = getApi();
+        const [draftId, body] = await Promise.all([
+          api.findDraftId(accountId, message.id),
+          message.html
+            ? resolveCidImages(message.html, message.attachments, (a) =>
+                a.attachmentId ? api.getAttachmentData(accountId, message.id, a.attachmentId) : Promise.resolve(""),
+              )
+            : Promise.resolve(undefined),
+        ]);
+        const draft = draftCompose(accountId, message, draftId);
+        await openCompose(body ? { ...draft, body } : draft);
       } catch (e) {
         toast.error("Couldn't open the draft", { description: errorMessage(e) });
       }

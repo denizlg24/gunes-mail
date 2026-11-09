@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  real,
   pgTable,
   primaryKey,
   text,
@@ -13,7 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type { UserSettings } from "@gunes/shared";
+import type { ThreadInsight, TriageCategory, UserSettings } from "@gunes/shared";
 
 import type { AttachmentMeta, Mailbox, OutgoingPayload, RuleAction, RuleCondition } from "../providers/types";
 
@@ -98,6 +99,11 @@ export const messages = pgTable(
     providerRef: jsonb("provider_ref").$type<Record<string, unknown>>(),
     category: text("category", { enum: ["focused", "other"] }),
     rulesApplied: boolean("rules_applied").notNull().default(false),
+    triage: text("triage").$type<TriageCategory>(),
+    triageConfidence: real("triage_confidence"),
+    triageSource: text("triage_source", { enum: ["model", "user"] }),
+    /** Set once classification was attempted, whether or not it produced a category. */
+    triagedAt: timestamp("triaged_at", { withTimezone: true }),
     search: tsvector("search").generatedAlwaysAs(
       sql`setweight(to_tsvector('simple', coalesce("subject", '')), 'A') || setweight(to_tsvector('simple', coalesce("from"->>'name', '') || ' ' || coalesce("from"->>'email', '')), 'B') || setweight(to_tsvector('simple', coalesce("snippet", '') || ' ' || coalesce(left("text", 20000), '')), 'C')`,
     ),
@@ -108,6 +114,7 @@ export const messages = pgTable(
     index("messages_labels").using("gin", t.labelIds),
     index("messages_search").using("gin", t.search),
     index("messages_message_id").on(t.accountId, t.messageIdHeader),
+    index("messages_untriaged").on(t.date).where(sql`triaged_at is null`),
   ],
 );
 
@@ -128,6 +135,10 @@ export const threads = pgTable(
     draft: boolean("draft").notNull().default(false),
     hasAttachments: boolean("has_attachments").notNull().default(false),
     category: text("category"),
+    triage: text("triage").$type<TriageCategory>(),
+    insight: jsonb("insight").$type<ThreadInsight>(),
+    /** Identifies the thread state the insight was generated from. */
+    insightKey: text("insight_key"),
   },
   (t) => [
     primaryKey({ columns: [t.accountId, t.id] }),

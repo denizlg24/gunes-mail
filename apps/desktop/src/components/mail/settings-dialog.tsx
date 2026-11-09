@@ -1,4 +1,4 @@
-import { CheckIcon, FilterIcon, InfoIcon, KeyboardIcon, SendIcon, UserRoundIcon, MonitorIcon, MoonIcon, PaletteIcon, PlusIcon, SunIcon, UserMinusIcon, UsersIcon } from "lucide-react";
+import { CheckIcon, FilterIcon, InfoIcon, KeyboardIcon, SendIcon, UserRoundIcon, MonitorIcon, MoonIcon, PaletteIcon, PlusIcon, SparklesIcon, SunIcon, UserMinusIcon, UsersIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { create } from "zustand";
 
@@ -12,13 +12,14 @@ import { ACCENTS, type Density, type ReadingPane, useUi } from "@/store/ui";
 
 import { confirmDialog } from "./dialog-host";
 import { AboutSection } from "./about-section";
+import { AiSection } from "./ai-section";
 import { AccountSection } from "./account-section";
 import { useAddAccountDialog } from "./add-account-dialog";
 import { PersonAvatar } from "./person-avatar";
 import { RulesSection } from "./rules-section";
 import { SendingSection } from "./sending-section";
 
-export type Section = "account" | "accounts" | "appearance" | "rules" | "sending" | "shortcuts" | "about";
+export type Section = "account" | "accounts" | "appearance" | "ai" | "rules" | "sending" | "shortcuts" | "about";
 
 export const useSettings = create<{ open: boolean; section: Section; show: (section?: Section) => void; close: () => void }>()(
   (set) => ({
@@ -169,6 +170,7 @@ export function SettingsDialog() {
     { id: "account", label: "Güneş account", icon: UserRoundIcon },
     { id: "accounts", label: "Mail accounts", icon: UsersIcon },
     { id: "appearance", label: "Appearance", icon: PaletteIcon },
+    { id: "ai", label: "AI features", icon: SparklesIcon },
     { id: "rules", label: "Rules", icon: FilterIcon },
     { id: "sending", label: "Sending", icon: SendIcon },
     { id: "shortcuts", label: "Keyboard shortcuts", icon: KeyboardIcon },
@@ -241,6 +243,7 @@ export function SettingsDialog() {
           {section === "account" && <AccountSection />}
           {section === "about" && <AboutSection />}
           {section === "appearance" && <AppearanceSection />}
+          {section === "ai" && <AiSection />}
           {section === "rules" && <RulesSection />}
           {section === "sending" && <SendingSection onEdit={() => onOpenChange(false)} />}
           {section === "shortcuts" && (

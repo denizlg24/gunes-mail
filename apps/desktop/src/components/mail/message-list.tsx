@@ -9,15 +9,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCommands } from "@/hooks/use-commands";
 import { useContextTarget } from "@/hooks/use-context-target";
-import { useLabels, useListParams, useThreadList, useVisibleThreads } from "@/hooks/use-mail";
+import { useAiCapabilities, useLabels, useListParams, useThreadList, useVisibleThreads } from "@/hooks/use-mail";
 import { folderName } from "@/lib/folders";
 import { dateGroup } from "@/lib/format";
-import type { ListFilter, ThreadSummary } from "@/lib/types";
+import type { ListFilter, ThreadSummary, TriageCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/store/ui";
 
@@ -25,6 +26,7 @@ import { ErrorReference } from "./error-reference";
 import { DRAG_MIME, type DragPayload } from "./folder-pane";
 import { ContextMenuEntries, useMessageMenu } from "./menu-entries";
 import { MessageRow, type RowHandlers } from "./message-row";
+import { TRIAGE_META, TRIAGE_OPTIONS, TriageDot } from "./triage";
 
 export const MESSAGE_LIST_ID = "message-list";
 
@@ -79,6 +81,12 @@ export function MessageList() {
   const setInboxTab = useUi((s) => s.setInboxTab);
   const filter = useUi((s) => s.filter);
   const setFilter = useUi((s) => s.setFilter);
+  const triage = useUi((s) => s.triage);
+  const setTriageFilter = useUi((s) => s.setTriageFilter);
+  const smartCategories = useUi((s) => s.smartCategories);
+  const { data: ai } = useAiCapabilities();
+  const showTriage = smartCategories && !!ai?.classifier;
+  const activeTriage = showTriage ? triage : null;
   const search = useUi((s) => s.search);
   const setSearch = useUi((s) => s.setSearch);
   const focusedInbox = useUi((s) => s.focusedInbox);
@@ -304,13 +312,15 @@ export function MessageList() {
                   <DropdownMenuTrigger
                     className={cn(
                       "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] hover:bg-hover data-popup-open:bg-hover",
-                      filter !== "all" && "text-brand",
+                      (filter !== "all" || activeTriage) && "text-brand",
                     )}
                   />
                 }
               >
                 <FilterIcon className="size-4" />
-                {filter !== "all" && FILTERS.find((f) => f.value === filter)?.label}
+                {[filter !== "all" && FILTERS.find((f) => f.value === filter)?.label, activeTriage && TRIAGE_META[activeTriage].label]
+                  .filter(Boolean)
+                  .join(" · ")}
               </TooltipTrigger>
               <TooltipContent>Filter</TooltipContent>
             </Tooltip>
@@ -325,6 +335,26 @@ export function MessageList() {
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
+              {showTriage && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Category</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={triage ?? "any"}
+                      onValueChange={(v) => setTriageFilter(v === "any" ? null : (v as TriageCategory))}
+                    >
+                      <DropdownMenuRadioItem value="any">Any category</DropdownMenuRadioItem>
+                      {TRIAGE_OPTIONS.map((o) => (
+                        <DropdownMenuRadioItem key={o.id} value={o.id}>
+                          <TriageDot category={o.id} />
+                          {o.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuGroup>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -401,7 +431,7 @@ export function MessageList() {
                 <div className="text-[13px] text-subtle">Recent messages show up here as they arrive.</div>
               </div>
             ) : (
-              <EmptyState searching={!!search} filtered={filter !== "all"} />
+              <EmptyState searching={!!search} filtered={filter !== "all" || !!activeTriage} />
             )
           ) : (
             threads.map((thread: ThreadSummary) => {
@@ -422,6 +452,7 @@ export function MessageList() {
                     checked={multi && selected}
                     selectionMode={multi}
                     showRecipients={showRecipients}
+                    showTriage={showTriage}
                     density={density}
                     handlers={handlers}
                   />

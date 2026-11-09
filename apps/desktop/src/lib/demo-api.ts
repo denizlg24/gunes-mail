@@ -4,6 +4,10 @@ import { DEFAULT_SETTINGS } from "@gunes/shared";
 
 import type {
   Account,
+  AiCapabilities,
+  AiComposeRequest,
+  ThreadInsight,
+  TriageCategory,
   DeviceSession,
   UserProfile,
   UserSettings,
@@ -48,23 +52,23 @@ const PEOPLE: Mailbox[] = [
   { name: "Notion Team", email: "team@makenotion.com" },
 ];
 
-const SUBJECTS: { subject: string; body: string; category: "primary" | "other"; attach?: string }[] = [
-  { subject: "Q4 roadmap review — notes and next steps", body: "Thanks everyone for joining today. I've summarised the decisions below:<ul><li>Ship the offline mode beta by Nov 28</li><li>Move the analytics revamp to Q1</li><li>Hire one more frontend engineer</li></ul>Let me know if I missed anything.", category: "primary", attach: "Q4-Roadmap.pdf" },
-  { subject: "Lunch on Thursday?", body: "Hey! Are you free for lunch on Thursday? There's a new ramen place near the office I've been wanting to try.", category: "primary" },
-  { subject: "[outlook-clone] Pull request #42: Add keyboard shortcuts", body: "<b>@maya-chen</b> requested your review on this pull request.<br><br>Adds Ctrl+R / Ctrl+Shift+R / Ctrl+F handlers and a shortcut cheat sheet.", category: "other" },
-  { subject: "ENG-1182 moved to In Review", body: "Sarah Kim moved <b>ENG-1182 Sync drafts across devices</b> from In Progress to In Review.", category: "other" },
-  { subject: "Contract draft for the website redesign", body: "Please find attached the draft contract. The main changes from last time are the payment schedule (now 40/30/30) and the extended support window.", category: "primary", attach: "Contract-v3.docx" },
-  { subject: "Your receipt from Stripe #1834-2291", body: "Amount paid: <b>€49.00</b><br>Date paid: this week<br>Payment method: Visa ending in 4242", category: "other", attach: "Receipt-1834-2291.pdf" },
-  { subject: "Design review: new onboarding flow", body: "I've updated the onboarding prototype with the feedback from Monday. The biggest change is the account connection step, which now happens after the tour.", category: "primary" },
-  { subject: "Your flight to Lisbon is confirmed", body: "Booking reference <b>X7K2PL</b>.<br>Departure: Friday 08:35 — Arrival: 10:05.<br>Seat 14A. Have a great trip!", category: "other", attach: "Boarding-pass.pdf" },
-  { subject: "Re: Invoice for October", body: "Thanks, payment has been scheduled for the 15th. Could you send the updated VAT number for next month's invoice?", category: "primary" },
-  { subject: "Deployment succeeded: outlook-clone (production)", body: "Your deployment is live.<br><br>Commit: <code>feat: conversation view</code><br>Duration: 48s", category: "other" },
-  { subject: "Weekend plans 🎉", body: "We're thinking of going hiking in Sintra on Saturday. Want to join? We'd leave around 9.", category: "primary" },
-  { subject: "Feedback on the API proposal", body: "Overall I like the direction. Two concerns: pagination should be cursor-based, and we should version the endpoints from day one. Happy to pair on it tomorrow.", category: "primary" },
-  { subject: "Your weekly Notion digest", body: "Here's what happened in your workspace this week: 14 pages edited, 3 new comments mentioning you.", category: "other" },
-  { subject: "Quarterly planning offsite — agenda", body: "Agenda for the offsite is attached. Please add any topics you'd like to cover by Wednesday.", category: "primary", attach: "Offsite-agenda.xlsx" },
-  { subject: "Can you review the hiring rubric?", body: "We're finalising the frontend rubric. I'd love your eyes on the system design section before we share it with the panel.", category: "primary" },
-  { subject: "Figma: Maya commented on Mail App — Components", body: "<i>\"Should the hover actions be visible on the selected row as well?\"</i>", category: "other" },
+const SUBJECTS: { subject: string; body: string; triage: TriageCategory; category: "primary" | "other"; attach?: string }[] = [
+  { subject: "Q4 roadmap review — notes and next steps", body: "Thanks everyone for joining today. I've summarised the decisions below:<ul><li>Ship the offline mode beta by Nov 28</li><li>Move the analytics revamp to Q1</li><li>Hire one more frontend engineer</li></ul>Let me know if I missed anything.", triage: "fyi", category: "primary", attach: "Q4-Roadmap.pdf" },
+  { subject: "Lunch on Thursday?", body: "Hey! Are you free for lunch on Thursday? There's a new ramen place near the office I've been wanting to try.", triage: "action-needed", category: "primary" },
+  { subject: "[outlook-clone] Pull request #42: Add keyboard shortcuts", body: "<b>@maya-chen</b> requested your review on this pull request.<br><br>Adds Ctrl+R / Ctrl+Shift+R / Ctrl+F handlers and a shortcut cheat sheet.", triage: "action-needed", category: "other" },
+  { subject: "ENG-1182 moved to In Review", body: "Sarah Kim moved <b>ENG-1182 Sync drafts across devices</b> from In Progress to In Review.", triage: "fyi", category: "other" },
+  { subject: "Contract draft for the website redesign", body: "Please find attached the draft contract. The main changes from last time are the payment schedule (now 40/30/30) and the extended support window.", triage: "action-needed", category: "primary", attach: "Contract-v3.docx" },
+  { subject: "Your receipt from Stripe #1834-2291", body: "Amount paid: <b>€49.00</b><br>Date paid: this week<br>Payment method: Visa ending in 4242", triage: "purchases", category: "other", attach: "Receipt-1834-2291.pdf" },
+  { subject: "Design review: new onboarding flow", body: "I've updated the onboarding prototype with the feedback from Monday. The biggest change is the account connection step, which now happens after the tour.", triage: "fyi", category: "primary" },
+  { subject: "Your flight to Lisbon is confirmed", body: "Booking reference <b>X7K2PL</b>.<br>Departure: Friday 08:35 — Arrival: 10:05.<br>Seat 14A. Have a great trip!", triage: "scheduled", category: "other", attach: "Boarding-pass.pdf" },
+  { subject: "Re: Invoice for October", body: "Thanks, payment has been scheduled for the 15th. Could you send the updated VAT number for next month's invoice?", triage: "action-needed", category: "primary" },
+  { subject: "Deployment succeeded: outlook-clone (production)", body: "Your deployment is live.<br><br>Commit: <code>feat: conversation view</code><br>Duration: 48s", triage: "fyi", category: "other" },
+  { subject: "Weekend plans 🎉", body: "We're thinking of going hiking in Sintra on Saturday. Want to join? We'd leave around 9.", triage: "scheduled", category: "primary" },
+  { subject: "Feedback on the API proposal", body: "Overall I like the direction. Two concerns: pagination should be cursor-based, and we should version the endpoints from day one. Happy to pair on it tomorrow.", triage: "fyi", category: "primary" },
+  { subject: "Your weekly Notion digest", body: "Here's what happened in your workspace this week: 14 pages edited, 3 new comments mentioning you.", triage: "newsletter", category: "other" },
+  { subject: "Quarterly planning offsite — agenda", body: "Agenda for the offsite is attached. Please add any topics you'd like to cover by Wednesday.", triage: "scheduled", category: "primary", attach: "Offsite-agenda.xlsx" },
+  { subject: "Can you review the hiring rubric?", body: "We're finalising the frontend rubric. I'd love your eyes on the system design section before we share it with the panel.", triage: "action-needed", category: "primary" },
+  { subject: "Figma: Maya commented on Mail App — Components", body: "<i>\"Should the hover actions be visible on the selected row as well?\"</i>", triage: "fyi", category: "other" },
 ];
 
 const USER_LABELS: Record<string, Label[]> = {
@@ -84,6 +88,7 @@ const USER_LABELS: Record<string, Label[]> = {
 interface DemoThread {
   id: string;
   category: "primary" | "other";
+  triage?: TriageCategory | null;
   messages: Message[];
 }
 
@@ -170,7 +175,7 @@ function generate(account: Account, seed: number): DemoThread[] {
         draft: false,
       });
     }
-    threads.push({ id, category: tpl.category, messages });
+    threads.push({ id, category: tpl.category, triage: baseLabels.includes("INBOX") ? tpl.triage : null, messages });
   }
 
   threads.push({
@@ -248,7 +253,8 @@ export class DemoMailApi implements MailApi {
     for (const listener of this.listeners) listener(event);
   }
 
-  private settings: UserSettings = { ...DEFAULT_SETTINGS };
+  // Demo mail never leaves the browser, so its AI features can be on from the start.
+  private settings: UserSettings = { ...DEFAULT_SETTINGS, smartCategories: true, aiAssist: true };
 
   async login() {}
 
@@ -410,6 +416,57 @@ export class DemoMailApi implements MailApi {
     return 42;
   }
 
+  async setTriage(accountId: string, ids: string[], category: TriageCategory | null) {
+    await delay();
+    for (const id of ids) this.thread(accountId, id).triage = category;
+  }
+
+  async moveMatching(
+    accountId: string,
+    input: { sender: string; source: string; add: string[]; remove: string[]; dryRun?: boolean },
+  ) {
+    await delay();
+    const sender = input.sender.toLowerCase();
+    const matching = this.threads(accountId).filter((t) => {
+      const labels = new Set(t.messages.flatMap((m) => m.labelIds));
+      return labels.has(input.source) && !labels.has("TRASH") && t.messages.some((m) => m.from.email.toLowerCase() === sender);
+    });
+    if (!input.dryRun) await this.modifyThreads(accountId, matching.map((t) => t.id), input.add, input.remove);
+    return matching.length;
+  }
+
+  async aiCapabilities(): Promise<AiCapabilities> {
+    return { classifier: true, assist: true };
+  }
+
+  async threadInsight(accountId: string, threadId: string): Promise<ThreadInsight> {
+    await delay(900);
+    const t = this.thread(accountId, threadId);
+    const first = t.messages[0];
+    const people = Array.from(new Set(t.messages.map((m) => m.from.name)));
+    return {
+      summary: `${people.join(" and ")} ${t.messages.length > 1 ? "discuss" : "writes about"} “${first.subject}”. ${htmlToText(first.html ?? "").split(/(?<=[.!?])\s/)[0] ?? ""}`.trim(),
+      keyPoints: t.messages.slice(0, 3).map((m) => `${m.from.name}: ${m.snippet.slice(0, 80)}`),
+      actionItems: t.triage === "action-needed" ? [{ text: `Reply to ${first.from.name}`, due: null }] : [],
+      generatedAt: Date.now(),
+    };
+  }
+
+  async aiCompose(_accountId: string, request: AiComposeRequest, onText: (text: string) => void, signal?: AbortSignal) {
+    const reply =
+      request.action === "rewrite"
+        ? request.draft.replace(/\s+/g, " ").trim()
+        : `Hi,\n\nThanks for your message. ${request.instruction.trim() || "That works for me"}.\n\nLet me know if anything else comes up.`;
+    let text = "";
+    for (const word of reply.split(/(?<=\s)/)) {
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      await delay(25);
+      text += word;
+      onText(text);
+    }
+    return text;
+  }
+
   subscribe(onEvent: (event: ServerEvent) => void) {
     this.listeners.add(onEvent);
     return () => {
@@ -482,7 +539,7 @@ export class DemoMailApi implements MailApi {
     const account = this.accounts.find((a) => a.id === accountId) ?? ACCOUNTS[0];
     const { labelIds, q } = folderQuery(params);
     const matching = this.threads(accountId)
-      .filter((t) => this.matches(t, labelIds, q, account))
+      .filter((t) => this.matches(t, labelIds, q, account) && (!params.triage || t.triage === params.triage))
       .sort((a, b) => b.messages[b.messages.length - 1].date - a.messages[a.messages.length - 1].date);
     const start = Number(params.pageToken ?? 0);
     const page = matching.slice(start, start + 25);
@@ -508,6 +565,7 @@ export class DemoMailApi implements MailApi {
       messageCount: t.messages.length,
       labelIds: Array.from(new Set(t.messages.flatMap((m) => m.labelIds))),
       draft: t.messages.some((m) => m.draft),
+      triage: t.triage ?? null,
     };
   }
 

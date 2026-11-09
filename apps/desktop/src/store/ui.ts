@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { InboxTab, ListFilter, Mailbox, OutgoingAttachment } from "@/lib/types";
+import type { InboxTab, ListFilter, Mailbox, OutgoingAttachment, TriageCategory } from "@/lib/types";
 
 export type ComposeMode = "new" | "reply" | "replyAll" | "forward" | "draft";
 
@@ -44,6 +44,7 @@ interface UiState {
   folder: string;
   inboxTab: InboxTab;
   filter: ListFilter;
+  triage: TriageCategory | null;
   search: string;
   selectedIds: string[];
   anchorId: string | null;
@@ -58,11 +59,14 @@ interface UiState {
   accent: Accent;
   undoSendSeconds: number;
   signature: string;
+  smartCategories: boolean;
+  aiAssist: boolean;
 
   openFolder: (accountId: string, folder: string) => void;
   switchAccount: (accountId: string) => void;
   setInboxTab: (tab: InboxTab) => void;
   setFilter: (filter: ListFilter) => void;
+  setTriageFilter: (triage: TriageCategory | null) => void;
   setSearch: (search: string) => void;
   select: (ids: string[], anchorId?: string | null) => void;
   setCompose: (compose: ComposeDraft | null) => void;
@@ -77,6 +81,8 @@ interface UiState {
   setAccent: (accent: Accent) => void;
   setUndoSendSeconds: (seconds: number) => void;
   setSignature: (signature: string) => void;
+  setSmartCategories: (on: boolean) => void;
+  setAiAssist: (on: boolean) => void;
 }
 
 function toggle(list: string[], value: string): string[] {
@@ -90,6 +96,7 @@ export const useUi = create<UiState>()(
       folder: "INBOX",
       inboxTab: "focused",
       filter: "all",
+      triage: null,
       search: "",
       selectedIds: [],
       anchorId: null,
@@ -104,17 +111,20 @@ export const useUi = create<UiState>()(
       accent: "blue",
       undoSendSeconds: 10,
       signature: "",
+      smartCategories: false,
+      aiAssist: false,
 
       openFolder: (accountId, folder) =>
-        set({ accountId, folder, selectedIds: [], anchorId: null, search: "", filter: "all" }),
+        set({ accountId, folder, selectedIds: [], anchorId: null, search: "", filter: "all", triage: null }),
       switchAccount: (accountId) =>
         set((s) =>
           s.accountId === accountId
             ? s
-            : { accountId, folder: "INBOX", selectedIds: [], anchorId: null, search: "", filter: "all" },
+            : { accountId, folder: "INBOX", selectedIds: [], anchorId: null, search: "", filter: "all", triage: null },
         ),
       setInboxTab: (inboxTab) => set({ inboxTab, selectedIds: [], anchorId: null }),
       setFilter: (filter) => set({ filter, selectedIds: [], anchorId: null }),
+      setTriageFilter: (triage) => set({ triage, selectedIds: [], anchorId: null }),
       setSearch: (search) => set({ search, selectedIds: [], anchorId: null }),
       select: (selectedIds, anchorId) =>
         set((s) => ({ selectedIds, anchorId: anchorId === undefined ? s.anchorId : anchorId })),
@@ -130,6 +140,8 @@ export const useUi = create<UiState>()(
       setAccent: (accent) => set({ accent }),
       setUndoSendSeconds: (undoSendSeconds) => set({ undoSendSeconds }),
       setSignature: (signature) => set({ signature }),
+      setSmartCategories: (smartCategories) => set((s) => ({ smartCategories, triage: smartCategories ? s.triage : null })),
+      setAiAssist: (aiAssist) => set({ aiAssist }),
     }),
     {
       name: "mail-ui",
@@ -148,6 +160,8 @@ export const useUi = create<UiState>()(
         accent: s.accent,
         undoSendSeconds: s.undoSendSeconds,
         signature: s.signature,
+        smartCategories: s.smartCategories,
+        aiAssist: s.aiAssist,
       }),
     },
   ),

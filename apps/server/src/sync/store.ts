@@ -38,7 +38,11 @@ export function threadSummary(rows: (typeof messages.$inferSelect)[]) {
   const senders = new Map<string, Mailbox>();
   for (const m of sorted) if (m.from.email) senders.set(m.from.email, m.from);
   const labelIds = Array.from(new Set(sorted.flatMap((m) => m.labelIds)));
-  const latestCategory = [...sorted].reverse().find((m) => m.category)?.category ?? null;
+  const newestFirst = [...sorted].reverse();
+  const latestCategory = newestFirst.find((m) => m.category)?.category ?? null;
+  // A category the user picked sticks to the conversation even as new replies arrive.
+  const triage =
+    newestFirst.find((m) => m.triage && m.triageSource === "user")?.triage ?? newestFirst.find((m) => m.triage)?.triage ?? null;
   return {
     subject: first.subject,
     snippet: last.snippet,
@@ -52,6 +56,7 @@ export function threadSummary(rows: (typeof messages.$inferSelect)[]) {
     draft: sorted.some((m) => m.labelIds.includes("DRAFT")),
     hasAttachments: sorted.some((m) => m.hasAttachments),
     category: latestCategory,
+    triage,
   };
 }
 
@@ -90,6 +95,7 @@ export async function recomputeThreads(accountId: string, threadIds: string[]) {
           draft: sql`excluded.draft`,
           hasAttachments: sql`excluded.has_attachments`,
           category: sql`excluded.category`,
+          triage: sql`excluded.triage`,
         },
       });
   }

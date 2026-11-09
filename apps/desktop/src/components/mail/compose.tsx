@@ -1,22 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import Placeholder from "@tiptap/extension-placeholder";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import {
-  BoldIcon,
   CalendarClockIcon,
   ChevronDownIcon,
   ClockIcon,
-  ItalicIcon,
-  LinkIcon,
-  ListIcon,
-  ListOrderedIcon,
   Loader2Icon,
   PaperclipIcon,
-  RemoveFormattingIcon,
   SendIcon,
+  SparklesIcon,
   Trash2Icon,
-  UnderlineIcon,
   XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,16 +26,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { registerComposeFlush } from "@/hooks/use-commands";
-import { keys, useAccounts } from "@/hooks/use-mail";
+import { keys, useAccounts, useAiCapabilities } from "@/hooks/use-mail";
 import { errorMessage, getApi } from "@/lib/api";
-import { fileToAttachment, signatureHtml } from "@/lib/compose";
+import { fileToAttachment, signatureHtml, textToParagraphs, withoutSignature } from "@/lib/compose";
+import { richTextExtensions } from "@/lib/editor";
 import { fileSize, shortcut } from "@/lib/format";
 import { htmlToText } from "@/lib/mime";
 import type { OutgoingAttachment, OutgoingMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { type ComposeDraft, useUi } from "@/store/ui";
 
+import { AiComposePanel } from "./ai-compose";
 import { confirmDialog, prompt } from "./dialog-host";
+import { FormattingButtons, ToolButton, handleImagePaste, promptLink } from "./editor-toolbar";
 import { EmailFrame } from "./email-frame";
 import { RecipientInput } from "./recipient-input";
 
@@ -75,41 +70,6 @@ function outgoingToDraft(accountId: string, payload: OutgoingMessage, previous: 
   };
 }
 
-function ToolButton({
-  label,
-  active,
-  onClick,
-  children,
-}: {
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label={label}
-            aria-pressed={active}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={onClick}
-            className={cn(
-              "inline-flex size-7 items-center justify-center rounded-sm text-subtle hover:bg-hover hover:text-foreground [&_svg]:size-4",
-              active && "bg-selected text-foreground hover:bg-selected-hover",
-            )}
-          />
-        }
-      >
-        {children}
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 export function Compose({ inline = false }: { inline?: boolean }) {
   const initial = useUi((s) => s.compose) as ComposeDraft;
   const setCompose = useUi((s) => s.setCompose);
@@ -130,6 +90,13 @@ export function Compose({ inline = false }: { inline?: boolean }) {
   const savedSnapshotRef = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const closedRef = useRef(false);
+  const editorRef = useRef<Editor | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiAssist = useUi((s) => s.aiAssist);
+  const { data: ai } = useAiCapabilities();
+  const [signature] = useState(() =>
+    initial.body || initial.mode === "draft" ? "" : signatureHtml(useUi.getState().signature),
+  );
 
   const account = accounts.find((a) => a.id === accountId) ?? accounts[0];
 
@@ -141,32 +108,18 @@ export function Compose({ inline = false }: { inline?: boolean }) {
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({ link: { openOnClick: false, autolink: true } }),
-      Placeholder.configure({ placeholder: inline ? "Type your reply…" : "Type / to insert files and more" }),
-    ],
-    content: initial.body || (initial.mode === "draft" ? "" : signatureHtml(useUi.getState().signature)),
+    extensions: richTextExtensions(inline ? "Type your reply…" : "Type / to insert files and more"),
+    content: initial.body || signature,
     editorProps: {
       attributes: { class: "selectable text-[14px]", spellcheck: "true" },
+      handlePaste: (_view, event) => handleImagePaste(editorRef.current, event),
     },
     onCreate: ({ editor: e }) => {
+      editorRef.current = e;
       savedSnapshotRef.current ??= snapshot(e.getHTML());
       if (initial.mode !== "new") requestAnimationFrame(() => e.commands.focus("start"));
     },
   });
-
-  const marks = useEditorState({
-    editor,
-    selector: ({ editor: e }) => ({
-      bold: e?.isActive("bold") ?? false,
-      italic: e?.isActive("italic") ?? false,
-      underline: e?.isActive("underline") ?? false,
-      bullet: e?.isActive("bulletList") ?? false,
-      ordered: e?.isActive("orderedList") ?? false,
-      link: e?.isActive("link") ?? false,
-    }),
-  });
-
 
   const build = useCallback((): OutgoingMessage | null => {
     if (!account || !editor) return null;
@@ -339,11 +292,21 @@ export function Compose({ inline = false }: { inline?: boolean }) {
   };
 
   const setLink = async () => {
+    if (editor) await promptLink(editor);
+  };
+
+  const userText = useCallback(() => withoutSignature(editor?.getText() ?? "", signature), [editor, signature]);
+
+  const applyAiText = (text: string) => {
     if (!editor) return;
-    const current = editor.getAttributes("link").href as string | undefined;
-    const url = await prompt({ title: "Insert link", initial: current ?? "https://", confirmLabel: "Insert" });
-    if (url === null) return;
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    const current = editor.getText();
+    const keepsSignature = !!signature && withoutSignature(current, signature) !== current;
+    editor
+      .chain()
+      .focus()
+      .setContent(textToParagraphs(text) + (keepsSignature ? signature : ""))
+      .focus("start")
+      .run();
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -395,7 +358,7 @@ export function Compose({ inline = false }: { inline?: boolean }) {
         void addFiles(e.dataTransfer.files);
       }}
       className={cn(
-        "relative flex flex-col rounded-lg border bg-pane shadow-sm",
+        "@container relative flex flex-col rounded-lg border bg-pane shadow-sm",
         inline ? "border-brand/40" : "border-border",
         dragging && "ring-2 ring-brand",
       )}
@@ -442,29 +405,27 @@ export function Compose({ inline = false }: { inline?: boolean }) {
         <ToolButton label="Attach file" onClick={() => fileRef.current?.click()}>
           <PaperclipIcon />
         </ToolButton>
-        <ToolButton label="Bold" active={marks?.bold} onClick={() => editor?.chain().focus().toggleBold().run()}>
-          <BoldIcon />
-        </ToolButton>
-        <ToolButton label="Italic" active={marks?.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}>
-          <ItalicIcon />
-        </ToolButton>
-        <ToolButton label="Underline" active={marks?.underline} onClick={() => editor?.chain().focus().toggleUnderline().run()}>
-          <UnderlineIcon />
-        </ToolButton>
-        <ToolButton label="Bullets" active={marks?.bullet} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
-          <ListIcon />
-        </ToolButton>
-        <ToolButton label="Numbering" active={marks?.ordered} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>
-          <ListOrderedIcon />
-        </ToolButton>
-        <ToolButton label={`Link (${shortcut("Ctrl+K")})`} active={marks?.link} onClick={() => void setLink()}>
-          <LinkIcon />
-        </ToolButton>
-        <ToolButton label="Clear formatting" onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}>
-          <RemoveFormattingIcon />
-        </ToolButton>
+        <FormattingButtons editor={editor} />
+        {aiAssist && ai?.assist && (
+          <>
+            <div className="mx-1 h-5 w-px bg-border" />
+            <button
+              type="button"
+              aria-pressed={aiOpen}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setAiOpen((v) => !v)}
+              className={cn(
+                "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-sm px-2 text-[12px] font-semibold whitespace-nowrap text-brand hover:bg-hover",
+                aiOpen && "bg-selected hover:bg-selected-hover",
+              )}
+            >
+              <SparklesIcon className="size-4" />
+              Draft with AI
+            </button>
+          </>
+        )}
         <div className="flex-1" />
-        <span className="mr-1 text-[12px] text-subtle">{title}</span>
+        <span className="mr-1 hidden text-[12px] text-subtle @min-[760px]:inline">{title}</span>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -582,6 +543,23 @@ export function Compose({ inline = false }: { inline?: boolean }) {
             </span>
           ))}
         </div>
+      )}
+
+      {aiOpen && account && (
+        <AiComposePanel
+          context={{
+            accountId: account.id,
+            threadId: account.id === initial.accountId ? initial.threadId : undefined,
+            mode: initial.mode === "draft" ? (initial.threadId ? "reply" : "new") : initial.mode,
+            subject,
+          }}
+          draftText={userText}
+          onApply={applyAiText}
+          onClose={() => {
+            setAiOpen(false);
+            editor?.commands.focus();
+          }}
+        />
       )}
 
       <div className="compose-editor cursor-text px-4 py-3" onClick={() => editor?.commands.focus()}>

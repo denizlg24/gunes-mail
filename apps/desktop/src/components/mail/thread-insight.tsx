@@ -1,0 +1,132 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { CircleCheckIcon, Loader2Icon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { useThreadInsight } from "@/hooks/use-mail";
+import { errorMessage, getApi } from "@/lib/api";
+import type { ThreadInsight } from "@/lib/types";
+
+import { ErrorReference } from "./error-reference";
+
+export function SummarizeButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-pane px-2.5 text-[12px] font-semibold text-brand transition-colors hover:bg-hover"
+    >
+      <SparklesIcon className="size-3.5" />
+      Summarize
+    </button>
+  );
+}
+
+export function useInsightOpen(accountId: string, threadId: string) {
+  const qc = useQueryClient();
+  // Reopening a conversation summarized earlier in the session shows it straight away.
+  return useState(() => !!qc.getQueryData<ThreadInsight>(["insight", accountId, threadId]));
+}
+
+export function ThreadInsightCard({
+  accountId,
+  threadId,
+  onClose,
+}: {
+  accountId: string;
+  threadId: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { data, isLoading, isError, error } = useThreadInsight(accountId, threadId, true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const regenerate = async () => {
+    setRefreshing(true);
+    try {
+      const next = await getApi().threadInsight(accountId, threadId, true);
+      qc.setQueryData(["insight", accountId, threadId], next);
+    } catch (e) {
+      toast.error("Couldn't summarize this conversation", { description: errorMessage(e) });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return (
+    <section
+      aria-label="Conversation summary"
+      className="rounded-lg border border-brand/25 bg-brand-soft/40 px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+    >
+      <header className="flex items-center gap-2">
+        <SparklesIcon className="size-4 text-brand" />
+        <h2 className="flex-1 text-[13px] font-semibold">Summary</h2>
+        {data && (
+          <button
+            type="button"
+            aria-label="Summarize again"
+            title="Summarize again"
+            disabled={refreshing}
+            onClick={() => void regenerate()}
+            className="inline-flex size-7 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshCwIcon className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Hide summary"
+          title="Hide summary"
+          onClick={onClose}
+          className="inline-flex size-7 items-center justify-center rounded-md text-subtle hover:bg-hover hover:text-foreground"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      </header>
+
+      {isLoading ? (
+        <div className="mt-2 flex flex-col gap-2" aria-live="polite">
+          <div className="flex items-center gap-2 text-[12px] text-subtle">
+            <Loader2Icon className="size-3.5 animate-spin" />
+            Reading the conversation…
+          </div>
+          <div className="h-3 w-11/12 animate-pulse rounded bg-foreground/8" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-foreground/8" />
+        </div>
+      ) : isError || !data ? (
+        <div className="mt-2 flex flex-col items-start gap-1.5 text-[13px] text-subtle">
+          <div>Couldn&apos;t summarize this conversation. {error?.message}</div>
+          <ErrorReference error={error} />
+        </div>
+      ) : (
+        <div className="selectable mt-2 flex flex-col gap-3 text-[13px] leading-relaxed">
+          <p>{data.summary}</p>
+          {data.keyPoints.length > 0 && (
+            <ul className="flex list-disc flex-col gap-1 pl-5 marker:text-subtle">
+              {data.keyPoints.map((point, i) => (
+                <li key={i}>{point}</li>
+              ))}
+            </ul>
+          )}
+          {data.actionItems.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <h3 className="text-[12px] font-semibold text-subtle">For you to do</h3>
+              <ul className="flex flex-col gap-1">
+                {data.actionItems.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <CircleCheckIcon className="mt-0.5 size-4 shrink-0 text-brand" />
+                    <span className="flex-1">
+                      {item.text}
+                      {item.due && <span className="ml-1.5 text-[12px] font-semibold text-flag">Due {item.due}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-[11px] text-subtle">Generated by AI. Check important details against the messages.</p>
+        </div>
+      )}
+    </section>
+  );
+}

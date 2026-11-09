@@ -1,13 +1,13 @@
 "use client";
 
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useDefaultLayout } from "react-resizable-panels";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { keys, useAccounts, useSession } from "@/hooks/use-mail";
+import { isMutating, keys, useAccounts, useAiCapabilities, useSession } from "@/hooks/use-mail";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
 import { useUpdater } from "@/hooks/use-updater";
 import { errorMessage, getApi } from "@/lib/api";
@@ -20,6 +20,7 @@ import { DialogHost } from "./dialog-host";
 import { FolderPane } from "./folder-pane";
 import { MessageList } from "./message-list";
 import { ReadingPane } from "./reading-pane";
+import { RuleSuggestionDialog } from "./rule-suggestion";
 import { Ribbon } from "./ribbon";
 import { SettingsDialog, useSettings } from "./settings-dialog";
 import { TitleBar } from "./title-bar";
@@ -31,6 +32,33 @@ function suppressNativeContextMenu(e: MouseEvent) {
   const editable = target?.closest("input, textarea, [contenteditable=true]");
   const hasSelection = !!window.getSelection()?.toString();
   if (!editable && !hasSelection) e.preventDefault();
+}
+
+const AI_INTRO_KEY = "ai-intro-shown";
+
+/** AI features are opt-in; say once that they exist, without turning anything on. */
+function useAiIntro(signedIn: boolean) {
+  const { data: ai } = useAiCapabilities();
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => getApi().getSettings(),
+    enabled: signedIn,
+    staleTime: Infinity,
+  });
+  useEffect(() => {
+    if (!ai || !settings || !(ai.classifier || ai.assist) || settings.smartCategories || settings.aiAssist) return;
+    try {
+      if (localStorage.getItem(AI_INTRO_KEY)) return;
+      localStorage.setItem(AI_INTRO_KEY, "1");
+    } catch {
+      return;
+    }
+    toast("New: smart categories, summaries and drafting help", {
+      description: "They're off until you turn them on.",
+      duration: 15_000,
+      action: { label: "Review", onClick: () => useSettings.getState().show("ai") },
+    });
+  }, [ai, settings]);
 }
 
 function Workspace() {
@@ -132,6 +160,8 @@ export function MailApp() {
     if (!signedIn) return;
     return getApi().subscribe((event: ServerEvent) => {
       if (event.type === "changed") {
+        // The mutation refetches once it settles; refetching now could return pre-change data.
+        if (isMutating(event.accountId)) return;
         void qc.invalidateQueries({ queryKey: keys.threads(event.accountId) });
         void qc.invalidateQueries({ queryKey: keys.labels(event.accountId) });
         void qc.invalidateQueries({ queryKey: ["thread", event.accountId] });
@@ -170,6 +200,8 @@ export function MailApp() {
     return () => document.removeEventListener("contextmenu", suppressNativeContextMenu);
   }, []);
 
+  useAiIntro(signedIn);
+
   const ready = !session.isLoading && !(signedIn && accountsQuery.isLoading) && !(session.data?.legacyAccounts ?? 0);
   const hasAccounts = signedIn && (accounts?.length ?? 0) > 0;
 
@@ -196,6 +228,7 @@ export function MailApp() {
       <SettingsDialog />
       <AddAccountDialog />
       <DialogHost />
+      <RuleSuggestionDialog />
     </div>
   );
 }

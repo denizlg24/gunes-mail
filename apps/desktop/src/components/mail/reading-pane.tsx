@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCommands } from "@/hooks/use-commands";
-import { useAccounts, useLabels, useMailActions, useThread, useVisibleThreads } from "@/hooks/use-mail";
+import { useAccounts, useAiCapabilities, useLabels, useMailActions, useThread, useVisibleThreads } from "@/hooks/use-mail";
 import { getApi } from "@/lib/api";
 import { leafName } from "@/lib/folders";
 import { displayName, fullDate, listDate, shortcut } from "@/lib/format";
@@ -33,6 +33,8 @@ import { Compose } from "./compose";
 import { EmailFrame } from "./email-frame";
 import { ErrorReference } from "./error-reference";
 import { PersonAvatar } from "./person-avatar";
+import { SummarizeButton, ThreadInsightCard, useInsightOpen } from "./thread-insight";
+import { TriageChip } from "./triage";
 
 function IconAction({
   label,
@@ -199,30 +201,29 @@ function MessageCard({
   );
 }
 
-function CategoryChips({ labelIds, labels }: { labelIds: string[]; labels: Label[] }) {
-  const chips = labels.filter((l) => l.type === "user" && labelIds.includes(l.id));
-  if (!chips.length) return null;
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {chips.map((l) => (
-        <span
-          key={l.id}
-          className="inline-flex h-5 items-center rounded-sm px-1.5 text-[11px] font-semibold"
-          style={{
-            background: l.color?.backgroundColor ?? "var(--brand-soft)",
-            color: l.color?.textColor ?? "var(--brand)",
-          }}
-        >
-          {leafName(l.name)}
-        </span>
-      ))}
-    </div>
-  );
+function CategoryChips({ chips }: { chips: Label[] }) {
+  return chips.map((l) => (
+    <span
+      key={l.id}
+      className="inline-flex h-5 items-center rounded-sm px-1.5 text-[11px] font-semibold"
+      style={{
+        background: l.color?.backgroundColor ?? "var(--brand-soft)",
+        color: l.color?.textColor ?? "var(--brand)",
+      }}
+    >
+      {leafName(l.name)}
+    </span>
+  ));
 }
 
 function ThreadView({ accountId, threadId }: { accountId: string; threadId: string }) {
   const { data: thread, isLoading, isError, error } = useThread(accountId, threadId);
   const { data: labels = [] } = useLabels(accountId);
+  const { data: ai } = useAiCapabilities();
+  const aiAssist = useUi((s) => s.aiAssist);
+  const smartCategories = useUi((s) => s.smartCategories);
+  const triage = useVisibleThreads((s) => s.threads.find((t) => t.id === threadId)?.triage ?? null);
+  const [insightOpen, setInsightOpen] = useInsightOpen(accountId, threadId);
   const compose = useUi((s) => s.compose);
   const markReadOnOpen = useUi((s) => s.markReadOnOpen);
   const { setRead } = useMailActions();
@@ -254,6 +255,8 @@ function ThreadView({ accountId, threadId }: { accountId: string; threadId: stri
     );
   }
 
+  const shownTriage = smartCategories && ai?.classifier ? triage : null;
+  const userLabels = labels.filter((l) => l.type === "user" && thread.labelIds.includes(l.id));
   const isExpanded = (m: Message, index: number) =>
     expanded[m.id] ?? (index === 0 || m.unread || messages.length <= 2);
   const inlineCompose = compose && compose.threadId === thread.id && compose.mode !== "new" && compose.mode !== "draft";
@@ -261,10 +264,21 @@ function ThreadView({ accountId, threadId }: { accountId: string; threadId: stri
   return (
     <div className="thin-scroll h-full overflow-y-auto">
       <div className="mx-auto flex max-w-[960px] flex-col gap-3 px-5 pt-4 pb-8">
-        <div className="px-1">
-          <h1 className="selectable text-[20px] leading-tight font-semibold break-words">{thread.subject || "(no subject)"}</h1>
-          <CategoryChips labelIds={thread.labelIds} labels={labels} />
+        <div className="flex items-start gap-3 px-1">
+          <div className="min-w-0 flex-1">
+            <h1 className="selectable text-[20px] leading-tight font-semibold break-words">{thread.subject || "(no subject)"}</h1>
+            {(shownTriage || userLabels.length > 0) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {shownTriage && <TriageChip category={shownTriage} className="h-5" />}
+                <CategoryChips chips={userLabels} />
+              </div>
+            )}
+          </div>
+          {aiAssist && ai?.assist && !insightOpen && <SummarizeButton onClick={() => setInsightOpen(true)} />}
         </div>
+        {aiAssist && ai?.assist && insightOpen && (
+          <ThreadInsightCard accountId={accountId} threadId={thread.id} onClose={() => setInsightOpen(false)} />
+        )}
         {inlineCompose && <Compose key={compose.key} inline />}
         {messages.map((m, i) => (
           <MessageCard

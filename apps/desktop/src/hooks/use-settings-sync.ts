@@ -20,6 +20,8 @@ function fromUi(): SyncedUi {
     markReadOnOpen: s.markReadOnOpen,
     undoSendSeconds: s.undoSendSeconds,
     signature: s.signature,
+    smartCategories: s.smartCategories,
+    aiAssist: s.aiAssist,
   };
 }
 

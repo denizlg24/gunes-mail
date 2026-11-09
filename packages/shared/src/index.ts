@@ -85,7 +85,12 @@ export interface UserSettings {
   focusedInbox: boolean;
   markReadOnOpen: boolean;
   undoSendSeconds: number;
+  /** HTML. Older clients stored plain text, which is still accepted. */
   signature: string;
+  /** Sort incoming mail into categories with the email classifier. Opt-in, per the privacy policy. */
+  smartCategories: boolean;
+  /** Thread summaries and drafting help. Opt-in, per the privacy policy. */
+  aiAssist: boolean;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -97,7 +102,48 @@ export const DEFAULT_SETTINGS: UserSettings = {
   markReadOnOpen: true,
   undoSendSeconds: 10,
   signature: "",
+  smartCategories: false,
+  aiAssist: false,
 };
+
+export const TRIAGE_CATEGORIES = ["action-needed", "scheduled", "fyi", "purchases", "newsletter", "promo", "spam"] as const;
+export type TriageCategory = (typeof TRIAGE_CATEGORIES)[number];
+
+export function isTriageCategory(value: unknown): value is TriageCategory {
+  return typeof value === "string" && (TRIAGE_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** What the server can do; AI features hide themselves when unconfigured. */
+export interface AiCapabilities {
+  classifier: boolean;
+  assist: boolean;
+}
+
+export interface ThreadInsight {
+  summary: string;
+  keyPoints: string[];
+  actionItems: { text: string; due: string | null }[];
+  generatedAt: number;
+}
+
+export type AiComposeRequest =
+  | {
+      action: "draft";
+      /** What the user wants the message to say. */
+      instruction: string;
+      threadId?: string;
+      /** The message being replied to or forwarded. */
+      messageId?: string;
+      mode: "new" | "reply" | "replyAll" | "forward";
+      subject?: string;
+    }
+  | {
+      action: "rewrite";
+      instruction: string;
+      /** Plain text of the current draft, without signature or quote. */
+      draft: string;
+      threadId?: string;
+    };
 
 export interface UserProfile {
   id: string;

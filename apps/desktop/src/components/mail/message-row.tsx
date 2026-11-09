@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { Density } from "@/store/ui";
 
 import { PersonAvatar } from "./person-avatar";
+import { TriageChip, showInList } from "./triage";
 
 export interface RowHandlers {
   onClick: (e: React.MouseEvent, id: string) => void;
@@ -25,6 +26,7 @@ interface MessageRowProps {
   checked: boolean;
   selectionMode: boolean;
   showRecipients: boolean;
+  showTriage: boolean;
   density: Density;
   handlers: RowHandlers;
 }
@@ -74,9 +76,11 @@ export const MessageRow = memo(function MessageRow({
   checked,
   selectionMode,
   showRecipients,
+  showTriage,
   density,
   handlers,
 }: MessageRowProps) {
+  const triage = showTriage && showInList(thread.triage) ? thread.triage : null;
   const lead = (showRecipients ? thread.recipients[0] : thread.senders[thread.senders.length - 1]) ??
     thread.senders[0] ?? { name: "?", email: "" };
   const compact = density === "compact";
@@ -159,15 +163,19 @@ export const MessageRow = memo(function MessageRow({
           >
             {thread.subject || "(no subject)"}
           </span>
+          {compact && triage && <TriageChip category={triage} />}
           {thread.hasAttachments && <PaperclipIcon className="size-3.5 shrink-0 text-subtle" />}
           <span className={cn("shrink-0 text-xs tabular-nums", thread.unread ? "font-semibold text-brand" : "text-subtle")}>
             {listDate(thread.date)}
           </span>
         </div>
         {!compact && (
-          <div className="h-5 truncate text-[13px] text-subtle">
-            {thread.draft && <span className="mr-1 text-flag">[Draft]</span>}
-            {thread.snippet || "No preview is available."}
+          <div className="flex h-5 items-center gap-1.5 text-[13px] text-subtle">
+            {triage && <TriageChip category={triage} />}
+            <span className="min-w-0 flex-1 truncate">
+              {thread.draft && <span className="mr-1 text-flag">[Draft]</span>}
+              {thread.snippet || "No preview is available."}
+            </span>
           </div>
         )}
       </div>

@@ -13,6 +13,8 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@gunes/shared": "workspace:*",
+    "ai": "^7.0.166",
     "croner": "^11.0.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.17",
@@ -20,8 +22,7 @@
     "mailparser": "^3.14.2",
     "nodemailer": "^10.4.0",
     "postgres": "3",
-    "zod": "^4.6.7",
-    "@gunes/shared": "workspace:*"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",

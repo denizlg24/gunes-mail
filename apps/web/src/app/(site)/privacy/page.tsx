@@ -34,7 +34,7 @@ export default function PrivacyPage() {
       <h3>Your Güneş account</h3>
       <ul>
         <li>Your name and, if you choose to set them, a sign-in email address and password. Passwords are stored only as a salted Argon2 hash.</li>
-        <li>Your preferences (theme, layout, signature, undo-send window) so they follow you to other devices.</li>
+        <li>Your preferences (theme, layout, signature, undo-send window, AI feature choices) so they follow you to other devices.</li>
         <li>A list of your signed-in devices: a device name, browser or app user agent, and when each was last active.</li>
       </ul>
       <h3>Connected mailboxes</h3>
@@ -99,10 +99,28 @@ export default function PrivacyPage() {
 
       <h2>AI features</h2>
       <p>
-        Güneş Mail does not currently include AI features. When we add features such as thread summaries or suggested
-        replies, they will be off until you turn them on, we will explain exactly which content is processed and by which
-        provider before you do, and your content will never be used to train AI models, ours or anyone else&apos;s. We will
-        update this policy before any such feature is released.
+        Güneş Mail has two optional AI features. Both are off until you turn them on in Settings → AI features, and you can
+        turn either off at any time.
+      </p>
+      <ul>
+        <li>
+          <strong>Smart categories</strong> sorts mail that arrived in your Inbox in the last 30 days into categories such as
+          &quot;Action needed&quot; or &quot;Newsletter&quot;. For each message, the subject, sender, text and number of
+          attachments are sent to a classification service operated by {site.operator} on the same infrastructure as our
+          servers. It uses a small statistical model, not a large language model; it does not keep the messages it
+          classifies, and no third party receives them. We store the resulting category with the message.
+        </li>
+        <li>
+          <strong>Summaries and drafting</strong> summarizes a conversation, or writes or rewrites a message, only when you
+          ask. The conversation in question (senders, recipients, dates, subjects and message text) and any instruction or
+          draft you give are sent through Vercel&apos;s AI Gateway to the model provider, currently Anthropic, solely to
+          produce the result. We store a generated summary with its conversation so it isn&apos;t generated twice; drafted
+          text is kept only if you save or send the message.
+        </li>
+      </ul>
+      <p>
+        Your content is never used to train AI models, ours or anyone else&apos;s. Turning a feature off stops all new
+        processing for it; deleting your account deletes stored categories and summaries with the rest of your data.
       </p>
 
       <h2>Sharing and service providers</h2>
@@ -110,6 +128,10 @@ export default function PrivacyPage() {
       <ul>
         <li>Your mail providers (Google, Microsoft, or your IMAP/SMTP host), to read and send mail on your behalf.</li>
         <li>Cloudflare, which carries encrypted traffic between the app and our servers.</li>
+        <li>
+          Vercel (AI Gateway) and Anthropic, only if you turn on summaries and drafting, and only for the content you ask
+          about.
+        </li>
         <li>The infrastructure that hosts our servers and database, operated by {site.operator}.</li>
       </ul>
       <p>We may disclose information if required by law, and will notify you where we are allowed to.</p>

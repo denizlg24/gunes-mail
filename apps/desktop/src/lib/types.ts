@@ -1,4 +1,6 @@
 import type {
+  AiCapabilities,
+  AiComposeRequest,
   DeviceSession,
   Mailbox,
   OutgoingPayload,
@@ -7,6 +9,8 @@ import type {
   RuleCondition,
   ServerEvent,
   SyncProgress,
+  ThreadInsight,
+  TriageCategory,
   UserProfile,
   UserSettings,
 } from "@gunes/shared";
@@ -21,6 +25,10 @@ export type {
   RuleOperator,
   ServerEvent,
   SyncProgress,
+  AiCapabilities,
+  AiComposeRequest,
+  ThreadInsight,
+  TriageCategory,
 } from "@gunes/shared";
 export type OutgoingMessage = OutgoingPayload;
 
@@ -63,6 +71,7 @@ export interface ThreadSummary {
   messageCount: number;
   labelIds: string[];
   draft: boolean;
+  triage?: TriageCategory | null;
 }
 
 export interface Attachment {
@@ -111,6 +120,7 @@ export interface ListParams {
   folder: string;
   tab?: InboxTab;
   filter: ListFilter;
+  triage?: TriageCategory;
   search?: string;
   pageToken?: string;
 }
@@ -242,6 +252,21 @@ export interface MailApi {
   deleteRule(id: string): Promise<void>;
   reorderRules(ids: string[]): Promise<void>;
   runRule(id: string): Promise<number>;
+  setTriage(accountId: string, ids: string[], category: TriageCategory | null): Promise<void>;
+  /** Moves every conversation from a sender in `source`, or counts them when dryRun is set. */
+  moveMatching(
+    accountId: string,
+    input: { sender: string; source: string; add: string[]; remove: string[]; dryRun?: boolean },
+  ): Promise<number>;
+  aiCapabilities(): Promise<AiCapabilities>;
+  threadInsight(accountId: string, threadId: string, refresh?: boolean): Promise<ThreadInsight>;
+  /** Streams plain text; onText receives the accumulated text so far. */
+  aiCompose(
+    accountId: string,
+    request: AiComposeRequest,
+    onText: (text: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string>;
   subscribe(onEvent: (event: ServerEvent) => void): () => void;
   openExternal(url: string): Promise<void>;
 }

@@ -63,6 +63,13 @@ The desktop app and the server use the same client.
 - A **Mobile and desktop** redirect `http://localhost`, with public client flows enabled
 - Delegated permissions `Mail.ReadWrite Mail.Send User.Read Contacts.Read People.Read offline_access`
 
+## AI features (optional)
+
+Both are opt-in per user (Settings → AI features) and hide themselves when the server isn't configured.
+
+- **Smart categories.** Set `EMAIL_CLASSIFIER_URL` (the full `/api/classify` endpoint of `apps/email-classifier` in the denizlg24.com repo) and `EMAIL_CLASSIFIER_API_TOKEN`. A background worker classifies Inbox mail from the last `CLASSIFY_DAYS` (30) days for users who turned the feature on, and backs off for five minutes when the service is unreachable.
+- **Summaries and drafting.** Set `AI_GATEWAY_API_KEY` (Vercel AI Gateway). `AI_MODEL` defaults to `anthropic/claude-haiku-5.5`. Requests are limited to 20 per user per minute.
+
 ## Deployment (Forge)
 
 Both services build from this repository on push to `main`. Create two deploy targets in the Forge dashboard:

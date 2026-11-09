@@ -1,25 +1,27 @@
+import { TRIAGE_CATEGORIES } from "@gunes/shared";
 import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 
 import type { AppEnv } from "../auth";
+import { setThreadTriage } from "../ai/triage";
 import { db, schema } from "../db";
 import { publish } from "../lib/events";
-import { mapLimit } from "../lib/http";
-import { buildRawMessage, snippetFrom } from "../lib/mime";
+import { buildRawMessage } from "../lib/mime";
 import type { MessageRef, OutgoingPayload } from "../providers/types";
 import { countMessages, progressFrom, reflectWrite, syncAccount } from "../sync/engine";
 import { forgetProvider, providerFor } from "../sync/providers";
 import { applyIncomingRules, applyOutgoingRules } from "../sync/rules";
 import { applyLocally, messageRefs, recomputeThreads } from "../sync/store";
+import { loadThread } from "../sync/thread";
 
 const { accounts, labels, threads, messages, outbox } = schema;
 const PAGE_SIZE = 50;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function ownedAccount(userId: string, accountId: string) {
+export async function ownedAccount(userId: string, accountId: string) {
   if (!UUID_RE.test(accountId)) throw new HTTPException(404, { message: "Account not found" });
   const [account] = await db
     .select()
@@ -107,6 +109,7 @@ function serializeThread(t: typeof threads.$inferSelect) {
     messageCount: t.messageCount,
     labelIds: t.labelIds,
     draft: t.draft,
+    triage: t.triage ?? null,
   };
 }
 
@@ -254,11 +257,12 @@ export const mail = new Hono<AppEnv>()
   })
   .get("/accounts/:id/threads", async (c) => {
     const account = await ownedAccount(c.get("userId"), c.req.param("id"));
-    const { folder, tab, filter, q, cursor } = z
+    const { folder, tab, filter, triage, q, cursor } = z
       .object({
         folder: z.string().default("INBOX"),
         tab: z.enum(["focused", "other"]).optional(),
         filter: z.enum(["all", "unread", "flagged", "attachments", "tome"]).default("all"),
+        triage: z.enum(TRIAGE_CATEGORIES).optional(),
         q: z.string().optional(),
         cursor: z.string().optional(),
       })
@@ -275,6 +279,7 @@ export const mail = new Hono<AppEnv>()
         where.push(tab === "other" ? sql`${threads.category} = 'other'` : sql`${threads.category} is distinct from 'other'`);
       }
     }
+    if (triage) where.push(eq(threads.triage, triage));
     if (filter === "unread") where.push(sql`${threads.unread}`);
     if (filter === "flagged") where.push(sql`${threads.flagged}`);
     if (filter === "attachments") where.push(sql`${threads.hasAttachments}`);
@@ -303,36 +308,8 @@ export const mail = new Hono<AppEnv>()
   .get("/accounts/:id/threads/:threadId", async (c) => {
     const account = await ownedAccount(c.get("userId"), c.req.param("id"));
     const threadId = c.req.param("threadId");
-    let rows = await db
-      .select()
-      .from(messages)
-      .where(and(eq(messages.accountId, account.id), eq(messages.threadId, threadId)))
-      .orderBy(asc(messages.date));
+    const rows = await loadThread(account, threadId);
     if (!rows.length) throw new HTTPException(404, { message: "Conversation not found" });
-    const missing = rows.filter((m) => !m.bodyFetched);
-    if (missing.length) {
-      const provider = providerFor(account);
-      await mapLimit(missing, 3, async (m) => {
-        const body = await provider.fetchBody({ id: m.id, threadId: m.threadId, labelIds: m.labelIds, providerRef: m.providerRef });
-        await db
-          .update(messages)
-          .set({
-            html: body.html ?? null,
-            text: body.text ?? null,
-            attachments: body.attachments,
-            hasAttachments: body.attachments.some((a) => !a.inline),
-            bodyFetched: true,
-            snippet: m.snippet || snippetFrom(body.text, body.html),
-          })
-          .where(and(eq(messages.accountId, account.id), eq(messages.id, m.id)));
-      });
-      await recomputeThreads(account.id, [threadId]);
-      rows = await db
-        .select()
-        .from(messages)
-        .where(and(eq(messages.accountId, account.id), eq(messages.threadId, threadId)))
-        .orderBy(asc(messages.date));
-    }
     const list = rows.map(serializeMessage);
     return c.json({
       id: threadId,
@@ -377,6 +354,46 @@ export const mail = new Hono<AppEnv>()
     }
     publish(account.userId, { type: "changed", accountId: account.id });
     return c.body(null, 204);
+  })
+  .post("/accounts/:id/threads/triage", async (c) => {
+    const account = await ownedAccount(c.get("userId"), c.req.param("id"));
+    const body = z
+      .object({ ids: z.array(z.string()).min(1).max(1000), category: z.enum(TRIAGE_CATEGORIES).nullable() })
+      .parse(await c.req.json());
+    await setThreadTriage(account.id, body.ids, body.category);
+    publish(account.userId, { type: "changed", accountId: account.id });
+    return c.body(null, 204);
+  })
+  .post("/accounts/:id/threads/move-matching", async (c) => {
+    const account = await ownedAccount(c.get("userId"), c.req.param("id"));
+    const body = z
+      .object({
+        sender: z.string().min(3),
+        source: z.string().min(1),
+        add: z.array(z.string()).default([]),
+        remove: z.array(z.string()).default([]),
+        dryRun: z.boolean().default(false),
+      })
+      .parse(await c.req.json());
+    const rows = await db
+      .select({ id: threads.id })
+      .from(threads)
+      .where(
+        and(
+          eq(threads.accountId, account.id),
+          sql`${threads.labelIds} @> array[${body.source}]::text[]`,
+          sql`not (${threads.labelIds} && array['TRASH','SPAM'])`,
+          sql`exists (select 1 from messages m where m.account_id = ${threads.accountId} and m.thread_id = ${threads.id} and lower(m."from"->>'email') = ${body.sender.toLowerCase()})`,
+        ),
+      )
+      .limit(1000);
+    const ids = rows.map((r) => r.id);
+    if (body.dryRun || !ids.length) return c.json({ count: ids.length });
+    const refs = await messageRefs(account.id, ids);
+    await providerFor(account).modify(refs, body.add, body.remove);
+    await applyLocally(ctx(account), refs, body.add, body.remove);
+    publish(account.userId, { type: "changed", accountId: account.id });
+    return c.json({ count: ids.length });
   })
   .post("/accounts/:id/folders/:folder/:action{mark-read|empty}", async (c) => {
     const account = await ownedAccount(c.get("userId"), c.req.param("id"));

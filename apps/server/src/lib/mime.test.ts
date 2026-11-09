@@ -35,3 +35,30 @@ test("parses encoded and grouped address lists", () => {
     { name: "Kim, Sarah", email: "s@c.com" },
   ]);
 });
+
+test("data: images become related parts referenced by Content-ID", async () => {
+  const { inlineDataImages } = await import("./mime");
+  const png = Buffer.from("png-bytes").toString("base64");
+  const { html, images } = inlineDataImages(
+    `<p>Hi</p><img src="data:image/png;base64,${png}" width="80"><img alt="again" src='data:image/png;base64,${png}'>`,
+  );
+  expect(images).toHaveLength(1);
+  expect(html).not.toContain("data:");
+  expect(html.match(/cid:/g)).toHaveLength(2);
+  expect(images[0].content.toString()).toBe("png-bytes");
+
+  const raw = (
+    await buildRawMessage({
+      from: { name: "Me", email: "me@x.com" },
+      to: [{ name: "You", email: "you@x.com" }],
+      cc: [],
+      bcc: [],
+      subject: "Logo",
+      html: `<img src="data:image/png;base64,${png}">`,
+      text: "",
+      attachments: [],
+    })
+  ).toString();
+  expect(raw).toContain("multipart/related");
+  expect(raw).toContain("Content-ID: <img1.");
+});

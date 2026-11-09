@@ -7,11 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { errorMessage, getApi } from "@/lib/api";
-import { useUi } from "@/store/ui";
 
 import { confirmDialog, prompt } from "./dialog-host";
+import { SignatureEditor } from "./signature-editor";
 import { useSettings } from "./settings-dialog";
 
 function ProfileForm() {
@@ -153,8 +152,6 @@ function Devices() {
 
 export function AccountSection() {
   const qc = useQueryClient();
-  const signature = useUi((s) => s.signature);
-  const setSignature = useUi((s) => s.setSignature);
 
   const signOut = async () => {
     const ok = await confirmDialog({
@@ -198,14 +195,11 @@ export function AccountSection() {
       <ProfileForm />
       <section className="flex flex-col gap-2">
         <h4 className="text-[13px] font-semibold">Signature</h4>
-        <Textarea
-          rows={3}
-          value={signature}
-          placeholder={"Best,\nYour name"}
-          onChange={(e) => setSignature(e.target.value)}
-          className="text-[13px]"
-        />
-        <p className="text-[12px] text-subtle">Added to new messages and replies on all your devices.</p>
+        <SignatureEditor />
+        <p className="text-[12px] text-subtle">
+          Added to new messages and replies on all your devices. Paste or insert a logo; pictures are resized to keep
+          messages light.
+        </p>
       </section>
       <section className="flex flex-col gap-2">
         <h4 className="text-[13px] font-semibold">Signed-in devices</h4>

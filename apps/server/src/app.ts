@@ -10,6 +10,7 @@ import { env } from "./env";
 import { ProviderError } from "./lib/http";
 import { recordError, recordRequest } from "./lib/observe";
 import { account, publicAccount } from "./routes/account";
+import { ai } from "./routes/ai";
 import { connect } from "./routes/connect";
 import { extras } from "./routes/extras";
 import { mail } from "./routes/mail";
@@ -44,6 +45,7 @@ app.use("/v1/*", async (c, next) =>
 );
 app.route("/v1", mail);
 app.route("/v1", extras);
+app.route("/v1", ai);
 
 app.onError((err, c) => {
   if (err instanceof HTTPException && err.status < 500) return c.json({ error: err.message }, err.status);

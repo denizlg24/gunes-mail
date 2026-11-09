@@ -5,6 +5,10 @@ import { folderQuery } from "./folders";
 import { bytesToBase64 } from "./mime";
 import type {
   Account,
+  AiCapabilities,
+  AiComposeRequest,
+  ThreadInsight,
+  TriageCategory,
   DeviceSession,
   UserProfile,
   UserSettings,
@@ -74,6 +78,12 @@ export class ServerMailApi implements MailApi {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const res = await this.fetchOk(path, init);
+    if (res.status === 204 || res.status === 202) return undefined as T;
+    return (await res.json()) as T;
+  }
+
+  private async fetchOk(path: string, init: RequestInit = {}): Promise<Response> {
     const { apiUrl, token } = await this.ensureSession();
     if (!token) throw new ApiError(401, "Not signed in");
     const headers = new Headers(init.headers);
@@ -83,15 +93,15 @@ export class ServerMailApi implements MailApi {
     let res: Response;
     try {
       res = await fetch(`${apiUrl}/v1${path}`, { ...init, headers });
-    } catch {
+    } catch (e) {
+      if (init.signal?.aborted) throw e;
       throw new ApiError(0, "Can't reach the Güneş Mail server. Check your connection.");
     }
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { error?: string; ref?: string } | null;
       throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.ref);
     }
-    if (res.status === 204 || res.status === 202) return undefined as T;
-    return (await res.json()) as T;
+    return res;
   }
 
   private json(method: string, body: unknown): RequestInit {
@@ -229,6 +239,7 @@ export class ServerMailApi implements MailApi {
   listThreads(accountId: string, params: ListParams) {
     const query = new URLSearchParams({ folder: params.folder, filter: params.filter });
     if (params.tab) query.set("tab", params.tab);
+    if (params.triage) query.set("triage", params.triage);
     if (params.search) query.set("q", params.search);
     if (params.pageToken) query.set("cursor", params.pageToken);
     return this.request<ThreadPage>(`/accounts/${accountId}/threads?${query}`);
@@ -369,6 +380,47 @@ export class ServerMailApi implements MailApi {
   async runRule(id: string) {
     const { processed } = await this.request<{ processed: number }>(`/rules/${id}/run`, { method: "POST" });
     return processed;
+  }
+
+  async setTriage(accountId: string, ids: string[], category: TriageCategory | null) {
+    await this.request(`/accounts/${accountId}/threads/triage`, this.json("POST", { ids, category }));
+  }
+
+  async moveMatching(
+    accountId: string,
+    input: { sender: string; source: string; add: string[]; remove: string[]; dryRun?: boolean },
+  ) {
+    const { count } = await this.request<{ count: number }>(`/accounts/${accountId}/threads/move-matching`, this.json("POST", input));
+    return count;
+  }
+
+  aiCapabilities() {
+    return this.request<AiCapabilities>("/ai");
+  }
+
+  threadInsight(accountId: string, threadId: string, refresh = false) {
+    return this.request<ThreadInsight>(
+      `/accounts/${accountId}/threads/${encodeURIComponent(threadId)}/insight`,
+      this.json("POST", { refresh }),
+    );
+  }
+
+  async aiCompose(accountId: string, request: AiComposeRequest, onText: (text: string) => void, signal?: AbortSignal) {
+    const res = await this.fetchOk(`/accounts/${accountId}/ai/compose`, { ...this.json("POST", request), signal });
+    if (!res.body) {
+      const text = await res.text();
+      onText(text);
+      return text;
+    }
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let text = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += value;
+      onText(text);
+    }
+    return text;
   }
 
   subscribe(onEvent: (event: ServerEvent) => void) {

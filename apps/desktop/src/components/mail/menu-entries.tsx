@@ -12,6 +12,7 @@ import {
   ReplyAllIcon,
   ReplyIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TagIcon,
   Trash2Icon,
   Undo2Icon,
@@ -37,7 +38,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Commands } from "@/hooks/use-commands";
-import { keys, useLabels } from "@/hooks/use-mail";
+import { keys, useAiCapabilities, useLabels, useMailActions } from "@/hooks/use-mail";
 import { errorMessage, getApi } from "@/lib/api";
 import { ARCHIVE, SYSTEM_FOLDERS, buildLabelTree, type LabelNode } from "@/lib/folders";
 import { ARCHIVE_KEY, shortcut } from "@/lib/format";
@@ -46,6 +47,7 @@ import { useUi } from "@/store/ui";
 import { toast } from "sonner";
 
 import { prompt } from "./dialog-host";
+import { TRIAGE_OPTIONS } from "./triage";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -73,6 +75,9 @@ export function useMessageMenu(commands: Commands, ids: string[], threads: Threa
   const accountId = useUi((s) => s.accountId);
   const folder = useUi((s) => s.folder);
   const { data: labels = [] } = useLabels(accountId);
+  const smartCategories = useUi((s) => s.smartCategories);
+  const { data: ai } = useAiCapabilities();
+  const { setTriage } = useMailActions();
   const qc = useQueryClient();
   if (!ids.length || !accountId) return [];
 
@@ -131,6 +136,31 @@ export function useMessageMenu(commands: Commands, ids: string[], threads: Threa
     { type: "item", label: "New category…", icon: TagIcon, onSelect: () => void createCategory() },
   ];
 
+  const current = threads.length > 0 && threads.every((t) => t.triage === threads[0].triage) ? (threads[0].triage ?? null) : undefined;
+  const smart: MenuEntry[] =
+    smartCategories && ai?.classifier
+      ? [
+          {
+            type: "sub",
+            label: "Smart category",
+            icon: SparklesIcon,
+            entries: [
+              ...TRIAGE_OPTIONS.map(
+                (o): MenuEntry => ({
+                  type: "check",
+                  label: o.label,
+                  checked: current === o.id,
+                  color: o.color,
+                  onSelect: () => void setTriage(accountId, ids, o.id),
+                }),
+              ),
+              sep,
+              { type: "check", label: "None", checked: current === null, onSelect: () => void setTriage(accountId, ids, null) },
+            ],
+          },
+        ]
+      : [];
+
   return [
     ...(single
       ? ([
@@ -156,6 +186,7 @@ export function useMessageMenu(commands: Commands, ids: string[], threads: Threa
       : []),
     { type: "sub", label: "Move", icon: FolderInputIcon, entries: moveTargets },
     { type: "sub", label: "Categorize", icon: TagIcon, entries: categories },
+    ...smart,
     sep,
     anyUnread
       ? { type: "item", label: "Mark as read", icon: MailOpenIcon, shortcut: "Ctrl+Q", onSelect: () => commands.setRead(true, ids) }

@@ -28,7 +28,10 @@ const settingsSchema = z.object({
   focusedInbox: z.boolean(),
   markReadOnOpen: z.boolean(),
   undoSendSeconds: z.number().int().min(0).max(60),
-  signature: z.string().max(10_000),
+  // HTML, with small inline images as data URIs.
+  signature: z.string().max(400_000),
+  smartCategories: z.boolean(),
+  aiAssist: z.boolean(),
 });
 
 function clientIp(c: { req: { header: (name: string) => string | undefined } }) {

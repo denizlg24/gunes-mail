@@ -1,3 +1,4 @@
+import { startTriageWorker } from "./ai/triage";
 import { app } from "./app";
 import { runMigrations } from "./db/migrate";
 import { env } from "./env";
@@ -7,6 +8,7 @@ import { startWorkers } from "./sync/engine";
 startObservability();
 await runMigrations();
 startWorkers();
+startTriageWorker();
 
 export default {
   port: env.PORT,
