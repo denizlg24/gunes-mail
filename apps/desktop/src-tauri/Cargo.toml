@@ -22,7 +22,7 @@ tauri-plugin-opener = "2"
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rand = "0.9"
-sha2 = "0.10"
+sha2 = "0.11"
 base64 = "0.22"
 url = "2"
 thiserror = "2"
