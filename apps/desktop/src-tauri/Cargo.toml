@@ -23,7 +23,7 @@ tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros"]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rand = "0.9"
 sha2 = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 url = "2"
 thiserror = "2"
 tauri-plugin-updater = "2.14.1"
